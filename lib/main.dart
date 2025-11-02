@@ -5,11 +5,11 @@ void main() {
   runApp(const BakeryApp());
 }
 
-// Definisikan Custom Colors dan Swatch berdasarkan palet
+
 const Color COLOR_DARK_PRIMARY = Color(0xFF0D1B2A);
 const Color COLOR_SECONDARY_ACCENT = Color(0xFF778DA9);
 
-// Buat MaterialColor swatch minimal
+
 const MaterialColor customSwatch = MaterialColor(
   0xFF0D1B2A,
   <int, Color>{
@@ -37,14 +37,14 @@ class BakeryApp extends StatelessWidget {
           titleLarge: TextStyle(color: COLOR_DARK_PRIMARY, fontWeight: FontWeight.bold),
         ),
         appBarTheme: const AppBarTheme(
-          backgroundColor: COLOR_DARK_PRIMARY, // Dark Primary
+          backgroundColor: COLOR_DARK_PRIMARY,
           foregroundColor: Colors.white,
           centerTitle: true,
           elevation: 2,
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: COLOR_SECONDARY_ACCENT, // Secondary Accent
+            backgroundColor: COLOR_SECONDARY_ACCENT,
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(20))),
             textStyle: TextStyle(fontWeight: FontWeight.bold),

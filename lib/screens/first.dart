@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import '../widgets/custom_app_bar.dart';
 import 'home.dart';
 
-// Warna dari palet yang digunakan di sini:
-// Dark Blue: #0D1B2A
-// Muted Blue: #778DA9
 
 class FirstPage extends StatefulWidget {
   const FirstPage({super.key});
@@ -34,9 +31,9 @@ class _FirstPageState extends State<FirstPage> {
         child: Column(
           children: [
             const SizedBox(height: 20),
-            // Widget untuk Logo Restoran
+
             Image.asset(
-              'assets/images/logoresto.jpeg', // <--- Ganti dengan nama file logo Anda
+              'assets/images/logoresto.jpeg',
               height: 250,
               errorBuilder: (_, __, ___) => const SizedBox(
                 height: 250,

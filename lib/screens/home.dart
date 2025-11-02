@@ -9,7 +9,7 @@ import 'payment_page.dart';
 import 'history_page.dart';
 import 'first.dart';
 
-// Definisikan Custom Colors (diambil dari lib/main.dart)
+
 const Color COLOR_DARK_PRIMARY = Color(0xFF0D1B2A);
 const Color COLOR_SECONDARY_ACCENT = Color(0xFF778DA9);
 
@@ -27,7 +27,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   final List<OrderItem> cart = [];
   final List<PaymentRecord> history = [];
 
-  // Variabel untuk dynamic title telah dihapus
+
 
   @override
   void initState() {
@@ -94,7 +94,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         if (newQty > 0) {
           cart[foundIndex].qty = newQty;
         } else {
-          // Jika kuantitas <= 0, hapus item
+
           cart.removeAt(foundIndex);
         }
       });
@@ -123,40 +123,40 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     setState(() {
       history.add(record);
       cart.clear();
-      _tabController.index = 3; // go to history
+      _tabController.index = 3;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // responsive layout decisions:
+
     final width = MediaQuery.of(context).size.width;
     final isWide = width > 800;
 
     const String currentAppBarTitle = 'EatMood';
 
     return Scaffold(
-      // Hapus const pada CustomAppBar jika ada
-      appBar: CustomAppBar(title: currentAppBarTitle, actions: [ // <-- Pastikan ini TIDAK const
+
+      appBar: CustomAppBar(title: currentAppBarTitle, actions: [
         Padding(
           padding: const EdgeInsets.only(right: 8.0),
           child: Center(child: Text(widget.buyerName, style: const TextStyle(color: Colors.white))),
         ),
         IconButton(
           icon: const Icon(Icons.logout),
-          onPressed: () { // <-- onPressed TIDAK boleh const
-            // Navigasi kembali ke FirstPage dan hapus semua rute sebelumnya
+          onPressed: () { //
+
             Navigator.pushAndRemoveUntil(
               context,
-              MaterialPageRoute(builder: (_) => const FirstPage()), // <-- const pada FirstPage aman jika FirstPage const
-                  (Route<dynamic> route) => false, // <-- Closure ini TIDAK const
+              MaterialPageRoute(builder: (_) => const FirstPage()),
+                  (Route<dynamic> route) => false,
             );
           },
         ),
       ]),
       body: Column(
         children: [
-          // Header area - responsive via LayoutBuilder
+
           Padding(
             padding: const EdgeInsets.all(12),
             child: LayoutBuilder(builder: (context, constraints) {
@@ -205,7 +205,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ),
         ],
       ),
-      // BottomNavigationBar dengan TabBar
+
       bottomNavigationBar: Container(
         color: const Color(0xFFE0E1DD),
         child: TabBar(

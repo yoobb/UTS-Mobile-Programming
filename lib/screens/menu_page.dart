@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/menu_item.dart';
 import '../models/order_item.dart';
 
-// Warna dari palet yang digunakan di sini:
+
 const Color COLOR_DARK_PRIMARY = Color(0xFF0D1B2A);
 const Color COLOR_SECONDARY_ACCENT = Color(0xFF778DA9);
 
@@ -42,7 +42,7 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
 
   Widget _buildMenuGrid(List<MenuItem> filteredMenu) {
     return LayoutBuilder(builder: (ctx, constr) {
-      const int crossAxis = 2; // Ditetapkan ke 2 kolom
+      const int crossAxis = 2;
       return Padding(
         padding: const EdgeInsets.all(12),
         child: GridView.builder(
@@ -57,10 +57,10 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
             final m = filteredMenu[i];
             return Card(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: Column( // Menggunakan Column untuk menumpuk gambar dan teks
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 1. Area Gambar (Mengambil hampir seluruh ruang vertikal yang tersedia)
+
                   Expanded(
                     child: ClipRRect(
                       borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
@@ -68,10 +68,10 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
                           ? Image.asset(
                         m.image,
                         width: double.infinity,
-                        fit: BoxFit.cover, // Gambar akan mengisi ruang
-                        // Placeholder jika gambar tidak ditemukan
+                        fit: BoxFit.cover,
+
                         errorBuilder: (_, __, ___) => Container(
-                          color: const Color(0xFFE0E1DD), // Off-white placeholder
+                          color: const Color(0xFFE0E1DD),
                           child: const Center(child: Icon(Icons.image_not_supported, color: COLOR_SECONDARY_ACCENT, size: 40)),
                         ),
                       )
@@ -82,7 +82,7 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
                     ),
                   ),
 
-                  // 2. Area Teks dan Aksi (Di bagian bawah kartu)
+
                   Padding(
                     padding: const EdgeInsets.all(8),
                     child: Column(
@@ -90,7 +90,7 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
                       children: [
                         Text(m.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                         const SizedBox(height: 4),
-                        // Deskripsi dipersingkat menjadi 1 baris
+
                         Text(m.description, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
                         const SizedBox(height: 8),
 
@@ -155,7 +155,7 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // TabBar untuk kategori
+
         Container(
           color: COLOR_DARK_PRIMARY,
           child: TabBar(
@@ -166,7 +166,7 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
             tabs: categories.map((c) => Tab(text: c)).toList(),
           ),
         ),
-        // Konten yang difilter (TabBarView)
+
         Expanded(
           child: TabBarView(
             controller: _tabController,

@@ -33,7 +33,7 @@ class OrdersPage extends StatelessWidget {
                 final o = cart[i];
                 return Card(
                   child: ListTile(
-                    // Leading: Menampilkan kuantitas saat ini
+
                     leading: SizedBox(
                       width: 30,
                       child: Center(
@@ -45,21 +45,21 @@ class OrdersPage extends StatelessWidget {
                     ),
                     title: Text(o.item.name),
                     subtitle: Text('Rp ${o.item.price.toStringAsFixed(0)}  •  Total: Rp ${o.total.toStringAsFixed(0)}'),
-                    // Trailing: Kontrol penambahan/pengurangan
+
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Tombol Kurang (-)
+
                         IconButton(
                           icon: const Icon(Icons.remove, size: 20),
                           onPressed: () => onUpdateQty(o.item.id, o.qty - 1),
                         ),
-                        // Tombol Tambah (+)
+
                         IconButton(
                           icon: const Icon(Icons.add, size: 20),
                           onPressed: () => onUpdateQty(o.item.id, o.qty + 1),
                         ),
-                        // Tombol Hapus (untuk penghapusan total)
+
                         IconButton(
                           icon: const Icon(Icons.delete, color: Colors.red, size: 20),
                           onPressed: () => onRemove(o.item.id),
@@ -72,7 +72,7 @@ class OrdersPage extends StatelessWidget {
             ),
           ),
           ElevatedButton(
-            // Secondary Accent #778DA9
+
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF778DA9), minimumSize: const Size.fromHeight(48)),
             onPressed: onProceed,
             child: const Text('Lanjut ke Pembayaran'),

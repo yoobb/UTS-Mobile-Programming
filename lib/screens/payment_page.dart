@@ -18,7 +18,7 @@ class _PaymentPageState extends State<PaymentPage> {
   @override
   void initState() {
     super.initState();
-    selectedPaymentMethod = paymentMethods.first; // Atur default
+    selectedPaymentMethod = paymentMethods.first;
   }
 
   @override
@@ -33,7 +33,7 @@ class _PaymentPageState extends State<PaymentPage> {
       padding: const EdgeInsets.all(12),
       child: Column(
         children: [
-          // Payment Method Dropdown
+
           Card(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -60,7 +60,7 @@ class _PaymentPageState extends State<PaymentPage> {
             ),
           ),
           const SizedBox(height: 12),
-          // Ringkasan Total Pembayaran
+
           Card(
             child: ListTile(
               title: const Text('Total Pembayaran'),
@@ -70,7 +70,7 @@ class _PaymentPageState extends State<PaymentPage> {
 
           const SizedBox(height: 12),
           ElevatedButton(
-            // Secondary Accent #778DA9
+
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF778DA9), minimumSize: const Size.fromHeight(48)),
             onPressed: () {
               // Asumsi Paid = Total

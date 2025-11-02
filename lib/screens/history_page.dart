@@ -6,7 +6,7 @@ class HistoryPage extends StatelessWidget {
   final List<PaymentRecord> history;
   const HistoryPage({super.key, required this.history});
 
-  // Helper untuk menentukan ikon berdasarkan metode pembayaran
+
   IconData _getPaymentIcon(String method) {
     if (method.toLowerCase().contains('cash')) {
       return Icons.money;
@@ -18,19 +18,19 @@ class HistoryPage extends StatelessWidget {
     return Icons.receipt_long;
   }
 
-  // Helper untuk memformat timestamp (id) menjadi tanggal/waktu yang mudah dibaca
+
   String _formatDateTime(String timestampId) {
     try {
       final milliseconds = int.parse(timestampId);
       final dateTime = DateTime.fromMillisecondsSinceEpoch(milliseconds);
-      // Format sederhana: DD/MM/YYYY HH:MM
+
       return '${dateTime.day.toString().padLeft(2, '0')}/${dateTime.month.toString().padLeft(2, '0')}/${dateTime.year} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
     } catch (e) {
       return 'Tanggal tidak valid';
     }
   }
 
-  // Widget untuk menampilkan daftar item
+
   Widget _buildItemDetails(List<OrderItem> items) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -43,7 +43,7 @@ class HistoryPage extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Kuantitas dan Nama
+
               Expanded(
                 child: Text(
                   '${item.qty}x ${item.item.name}',
@@ -53,7 +53,7 @@ class HistoryPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              // Subtotal Item
+
               Text(
                 'Rp ${item.total.toStringAsFixed(0)}',
                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
@@ -84,17 +84,17 @@ class HistoryPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // === BARIS 1: Status Pembayaran dan Tanggal ===
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Status: LUNAS/SUCCESS
+
                     Text(
                       'Transaksi Sukses',
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: const Color(0xFF778DA9)), // Secondary Accent #778DA9
                     ),
-                    // Tanggal Transaksi
+
                     Text(
                       _formatDateTime(h.id),
                       style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
@@ -104,7 +104,7 @@ class HistoryPage extends StatelessWidget {
 
                 const SizedBox(height: 8),
 
-                // === DETAIL PEMBELI & METODE ===
+
                 Text('Pembeli: ${h.buyerName}', style: const TextStyle(fontSize: 15)),
                 const SizedBox(height: 4),
                 Row(
@@ -118,12 +118,12 @@ class HistoryPage extends StatelessWidget {
                   ],
                 ),
 
-                // === DETAIL ITEM YANG DIBELI ===
+
                 _buildItemDetails(h.items),
 
                 const Divider(height: 20),
 
-                // === BARIS TOTAL: Menonjolkan Total ===
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [

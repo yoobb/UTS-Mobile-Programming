@@ -3,8 +3,8 @@ class MenuItem {
   final String name;
   final double price;
   final String description;
-  final String image; // asset path or empty
-  final String category; // <--- Ditambahkan
+  final String image;
+  final String category;
 
   MenuItem({
     required this.id,
@@ -12,6 +12,6 @@ class MenuItem {
     required this.price,
     this.description = '',
     this.image = '',
-    this.category = 'Makanan', // <--- Nilai default
+    this.category = 'Makanan',
   });
 }
