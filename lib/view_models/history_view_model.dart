@@ -1,7 +1,8 @@
 // lib/view_models/history_view_model.dart
+
 import 'package:flutter/foundation.dart';
 import '../models/payment.dart';
-import '../data/database_helper.dart';
+import '../db/database_helper.dart';
 
 class HistoryViewModel extends ChangeNotifier {
   final dbHelper = DatabaseHelper.instance;

@@ -1,7 +1,9 @@
+// lib/models/user.dart
+
 class User {
   final int? id;
   final String username;
-  final String name;
+  final String name; // Nama Pembeli
 
   User({
     this.id,

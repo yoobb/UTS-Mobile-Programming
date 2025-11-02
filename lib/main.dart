@@ -1,18 +1,17 @@
 // lib/main.dart
 
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // BARU
+import 'package:provider/provider.dart';
 
 // Import ViewModel
 import 'view_models/auth_view_model.dart';
 import 'view_models/cart_view_model.dart';
 import 'view_models/history_view_model.dart';
 
-// Import View
-import 'views/screens/first_view.dart'; // Ganti dari 'screens/first.dart'
+// Import View dengan nama file yang Anda inginkan
+import 'views/first.dart'; // Menggunakan first.dart
 
 void main() {
-  // Inisialisasi MultiProvider untuk menyediakan semua ViewModel ke seluruh app
   runApp(
     MultiProvider(
       providers: [
@@ -71,8 +70,7 @@ class BakeryApp extends StatelessWidget {
           ),
         ),
       ),
-      // MENGGANTI ke nama View yang baru dan menghapus 'const' pada instance widget.
-      home: const FirstView(),
+      home: const FirstPage(),
     );
   }
 }

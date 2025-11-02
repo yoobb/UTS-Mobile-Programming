@@ -1,24 +1,26 @@
-// lib/screens/home.dart
+// lib/views/home_page.dart
+
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../widgets/custom_app_bar.dart';
 import '../models/menu_item.dart';
-import '../models/order_item.dart';
-import '../models/payment.dart';
+import '../models/user.dart';
+// --- IMPORTS YANG BENAR DENGAN NAMA FILE LAMA ---
 import 'menu_page.dart';
 import 'orders_page.dart';
 import 'payment_page.dart';
 import 'history_page.dart';
-import 'first.dart';
-// Import baru
-import '../models/user.dart';
-import '../data/database_helper.dart';
-
+import 'first.dart'; // Menggunakan first.dart
+// ----------------------------------------------------
+import '../view_models/auth_view_model.dart';
+import '../view_models/cart_view_model.dart';
+import '../view_models/history_view_model.dart';
 
 const Color COLOR_DARK_PRIMARY = Color(0xFF0D1B2A);
 const Color COLOR_SECONDARY_ACCENT = Color(0xFF778DA9);
 
 class HomePage extends StatefulWidget {
-  final User user; // Ganti dari buyerName ke User
+  final User user;
   const HomePage({super.key, required this.user});
 
   @override
@@ -28,17 +30,20 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late TabController _tabController;
   final List<MenuItem> menu = [];
-  final List<OrderItem> cart = [];
-  List<PaymentRecord> history = []; // Ubah menjadi non-final untuk update
-
-  final dbHelper = DatabaseHelper.instance; // Inisiasi DB helper
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     _loadMenu();
-    _loadHistory(); // Panggil fungsi untuk memuat history dari DB
+
+    // Memuat history saat halaman dimuat
+    Future.microtask(() {
+      final historyVM = Provider.of<HistoryViewModel>(context, listen: false);
+      if (widget.user.id != null) {
+        historyVM.loadHistory(widget.user.id!);
+      }
+    });
   }
 
   @override
@@ -47,8 +52,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  // ... (metode _loadMenu tetap sama)
   void _loadMenu() {
+    // Data Menu Statis
     menu.clear();
     menu.addAll([
       MenuItem(id: 'm1', name: 'Spaghetti', price: 45000, description: 'Spaghetti lembut dengan saus daging tomat khas Italia, disajikan hangat dengan taburan keju parmesan.', image: 'assets/images/spaghetti.jpg', category: 'Main Course'),
@@ -80,83 +85,53 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     ]);
   }
 
-  // Metode baru untuk memuat history dari database
-  void _loadHistory() async {
-    // Pastikan user.id tidak null setelah login/register
-    if (widget.user.id != null) {
-      final loadedHistory = await dbHelper.getHistoryByUserId(widget.user.id!);
-      setState(() {
-        history = loadedHistory;
-      });
+  void _addToCart(MenuItem item, int qty) {
+    Provider.of<CartViewModel>(context, listen: false).addToCart(item, qty);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ditambahkan $qty x ${item.name}')));
+  }
+
+  void _performCheckout(double paid, String paymentMethod) async {
+    final cartVM = Provider.of<CartViewModel>(context, listen: false);
+    final historyVM = Provider.of<HistoryViewModel>(context, listen: false);
+    final user = widget.user;
+
+    if (user.id == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error: User ID tidak ditemukan.')));
+      }
+      return;
     }
-  }
 
-  void addToCart(MenuItem item, int qty) {
-    final found = cart.indexWhere((o) => o.item.id == item.id);
-    if (found >= 0) {
-      setState(() => cart[found].qty += qty);
-    } else {
-      setState(() => cart.add(OrderItem(item: item, qty: qty)));
-    }
-  }
+    try {
+      final record = await cartVM.prepareCheckout(
+          paid,
+          paymentMethod,
+          user.id!,
+          user.name
+      );
 
-  void removeFromCart(String itemId) {
-    setState(() => cart.removeWhere((o) => o.item.id == itemId));
-  }
+      await historyVM.saveRecord(record);
 
-  void updateCartQuantity(String itemId, int newQty) {
-    final foundIndex = cart.indexWhere((o) => o.item.id == itemId);
-    if (foundIndex >= 0) {
-      setState(() {
-        if (newQty > 0) {
-          cart[foundIndex].qty = newQty;
-        } else {
-          // Remove if quantity is 0 or less
-          cart.removeAt(foundIndex);
-        }
-      });
-    }
-  }
-
-
-  double cartTotal() => cart.fold(0.0, (p, c) => p + c.total);
-
-  void checkout(double paid, String paymentMethod) async { // Ubah ke async
-    final total = cartTotal();
-    final change = paid - total;
-
-    final List<OrderItem> itemsPurchased = List.from(cart);
-
-    final record = PaymentRecord(
-      userId: widget.user.id!, // Gunakan ID User
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      buyerName: widget.user.name, // Gunakan nama terdaftar
-      total: total,
-      paid: paid,
-      change: change,
-      paymentMethod: paymentMethod,
-      items: itemsPurchased,
-    );
-
-    // Simpan record ke database
-    await dbHelper.insertPaymentRecord(record);
-
-    // Muat ulang history dari database dan update UI
-    await _loadHistory();
-
-    setState(() {
-      cart.clear();
       _tabController.index = 3;
-    });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pembayaran Rp ${paid.toStringAsFixed(0)} berhasil dengan ${paymentMethod}')));
+      }
+
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Checkout gagal: ${e.toString()}')));
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final authVM = Provider.of<AuthViewModel>(context, listen: false);
+    final cartVM = Provider.of<CartViewModel>(context);
 
     final width = MediaQuery.of(context).size.width;
-    final isWide = width > 800;
-
-    final String buyerName = widget.user.name; // Gunakan nama dari objek User
+    final String buyerName = widget.user.name;
 
     const String currentAppBarTitle = 'EatMood';
 
@@ -169,11 +144,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         ),
         IconButton(
           icon: const Icon(Icons.logout),
-          onPressed: () { //
-
+          onPressed: () {
+            authVM.logout();
             Navigator.pushAndRemoveUntil(
               context,
-              MaterialPageRoute(builder: (_) => const FirstPage()),
+              MaterialPageRoute(builder: (_) => const FirstPage()), // Panggil FirstPage
                   (Route<dynamic> route) => false,
             );
           },
@@ -188,22 +163,27 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               if (constraints.maxWidth > 700) {
                 return Row(
                   children: [
-                    Image.asset('assets/images/logo.png', height: 64, errorBuilder: (_, __, ___) => const SizedBox()),
+                    Image.asset('assets/images/logoresto.jpeg', height: 64, errorBuilder: (_, __, ___) => const SizedBox()),
                     const SizedBox(width: 12),
                     Expanded(child: Text('Welcome, $buyerName', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
-                    ElevatedButton.icon(
-                      onPressed: () => _tabController.animateTo(1),
-                      icon: const Icon(Icons.shopping_cart_outlined),
-                      label: const Text('View Cart'),
-                      style: ElevatedButton.styleFrom(backgroundColor: COLOR_SECONDARY_ACCENT),
+
+                    Consumer<CartViewModel>(
+                      builder: (context, cartVM, child) => ElevatedButton.icon(
+                        onPressed: () => _tabController.animateTo(1),
+                        icon: Badge(
+                            label: Text('${cartVM.cart.length}', style: const TextStyle(color: Colors.white, fontSize: 10)),
+                            isLabelVisible: cartVM.cart.isNotEmpty,
+                            child: const Icon(Icons.shopping_cart_outlined)
+                        ),
+                        label: const Text('View Cart'),
+                        style: ElevatedButton.styleFrom(backgroundColor: COLOR_SECONDARY_ACCENT),
+                      ),
                     ),
                   ],
                 );
               } else {
                 return Column(
                   children: [
-                    Image.asset('assets/images/logo.png', height: 64, errorBuilder: (_, __, ___) => const SizedBox()),
-                    const SizedBox(height: 8),
                     Text('Welcome, $buyerName', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ],
                 );
@@ -216,16 +196,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             child: TabBarView(
               controller: _tabController,
               children: [
-                MenuPage(menu: menu, onAdd: addToCart),
-                OrdersPage(
-                  cart: cart,
-                  onRemove: removeFromCart,
-                  onProceed: () => _tabController.index = 2,
-                  onUpdateQty: updateCartQuantity,
-                ),
-                // Gunakan checkout yang sudah diubah (async dan save ke DB)
-                PaymentPage(total: cartTotal(), onPay: checkout),
-                HistoryPage(history: history),
+                MenuPage(menu: menu, onAdd: _addToCart),
+                OrderPage(onProceed: () => _tabController.index = 2), // Menggunakan OrdersPage
+                PaymentPage(onPay: _performCheckout), // Menggunakan PaymentPage
+                HistoryPage(), // Menggunakan HistoryPage
               ],
             ),
           ),

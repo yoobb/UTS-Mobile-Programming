@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
-import '../models/menu_item.dart';
-import '../models/order_item.dart';
+// lib/views/screens/menu_view.dart
 
+import 'package:flutter/material.dart';
+import '../../models/menu_item.dart';
 
 const Color COLOR_DARK_PRIMARY = Color(0xFF0D1B2A);
 const Color COLOR_SECONDARY_ACCENT = Color(0xFF778DA9);
@@ -47,7 +47,7 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
         padding: const EdgeInsets.all(12),
         child: GridView.builder(
           itemCount: filteredMenu.length,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxis,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
@@ -60,7 +60,6 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
                   Expanded(
                     child: ClipRRect(
                       borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
@@ -81,7 +80,6 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
                       ),
                     ),
                   ),
-
 
                   Padding(
                     padding: const EdgeInsets.all(8),
@@ -125,7 +123,6 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
                                             onPressed: () {
                                               widget.onAdd(m, qty);
                                               Navigator.pop(c);
-                                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ditambahkan $qty x ${m.name}')));
                                             },
                                             child: const Text('Tambah'),
                                           ),

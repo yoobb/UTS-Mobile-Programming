@@ -1,10 +1,14 @@
+// lib/views/screens/payment_view.dart
+
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../view_models/cart_view_model.dart';
+
 
 class PaymentPage extends StatefulWidget {
-  final double total;
   final void Function(double paid, String paymentMethod) onPay;
 
-  const PaymentPage({super.key, required this.total, required this.onPay});
+  const PaymentPage({super.key, required this.onPay});
 
   @override
   State<PaymentPage> createState() => _PaymentPageState();
@@ -22,13 +26,10 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   @override
-  void dispose() {
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final total = widget.total;
+    // Menggunakan Consumer/Selector untuk mendapatkan total secara real-time
+    final total = context.select<CartViewModel, double>((vm) => vm.cartTotal);
+
     return Padding(
       padding: const EdgeInsets.all(12),
       child: Column(
@@ -69,22 +70,22 @@ class _PaymentPageState extends State<PaymentPage> {
           ),
 
           const SizedBox(height: 12),
-          ElevatedButton(
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF778DA9), minimumSize: const Size.fromHeight(48)),
+              onPressed: () {
+                final paid = total;
 
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF778DA9), minimumSize: const Size.fromHeight(48)),
-            onPressed: () {
-              // Asumsi Paid = Total
-              final paid = widget.total;
+                if (paid <= 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Total pembayaran harus lebih dari nol')));
+                  return;
+                }
 
-              if (paid <= 0) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Total pembayaran harus lebih dari nol')));
-                return;
-              }
-
-              widget.onPay(paid, selectedPaymentMethod);
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pembayaran Rp ${paid.toStringAsFixed(0)} berhasil dengan ${selectedPaymentMethod}')));
-            },
-            child: Text('Bayar (Total: Rp ${total.toStringAsFixed(0)})'),
+                widget.onPay(paid, selectedPaymentMethod);
+              },
+              child: Text('Bayar (Total: Rp ${total.toStringAsFixed(0)})'),
+            ),
           )
         ],
       ),

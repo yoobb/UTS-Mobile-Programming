@@ -3,18 +3,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../widgets/custom_app_bar.dart';
-import '../screens/home_view.dart'; // Ganti import ke HomeView
-import '../../view_models/auth_view_model.dart';
 import '../../models/user.dart';
+import '../../view_models/auth_view_model.dart';
+import 'home.dart';
 
-class FirstView extends StatefulWidget {
-  const FirstView({super.key});
+class FirstPage extends StatefulWidget {
+  const FirstPage({super.key});
 
   @override
-  State<FirstView> createState() => _FirstViewState();
+  State<FirstPage> createState() => _FirstPageState();
 }
 
-class _FirstViewState extends State<FirstView> {
+class _FirstPageState extends State<FirstPage> {
   final _usernameCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
   bool isRegisterMode = false;
@@ -64,7 +64,7 @@ class _FirstViewState extends State<FirstView> {
   void _navigateToHome(BuildContext context, User user) {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => HomeView(user: user)),
+      MaterialPageRoute(builder: (_) => HomePage(user: user)),
     );
   }
 
@@ -86,7 +86,7 @@ class _FirstViewState extends State<FirstView> {
               height: 250,
               errorBuilder: (_, __, ___) => const SizedBox(
                 height: 250,
-                child: Center(child: Text('LOGO RESTORAN', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF0D1B2A)))),
+                child: Center(child: Text('LOGO RESTORAN', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF0D1B2A)))),
               ),
             ),
             const SizedBox(height: 24),

@@ -1,3 +1,5 @@
+// lib/view_models/cart_view_model.dart
+
 import 'package:flutter/foundation.dart';
 import '../models/menu_item.dart';
 import '../models/order_item.dart';
@@ -37,8 +39,10 @@ class CartViewModel extends ChangeNotifier {
     }
   }
 
-  void checkout(double paid, String paymentMethod, int userId, String buyerName, Function(PaymentRecord) onSaveSuccess) {
-    if (_cart.isEmpty) return;
+  Future<PaymentRecord> prepareCheckout(double paid, String paymentMethod, int userId, String buyerName) async {
+    if (_cart.isEmpty) {
+      throw Exception("Cart is empty.");
+    }
 
     final total = cartTotal;
     final change = paid - total;
@@ -54,9 +58,8 @@ class CartViewModel extends ChangeNotifier {
       items: List.from(_cart),
     );
 
-    onSaveSuccess(record);
-
     _cart.clear();
     notifyListeners();
+    return record;
   }
 }

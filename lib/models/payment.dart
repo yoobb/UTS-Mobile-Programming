@@ -1,6 +1,8 @@
-import 'dart:convert'; // Tambahkan ini
+// lib/models/payment.dart
+
+import 'dart:convert';
 import 'order_item.dart';
-import 'menu_item.dart'; // Tambahkan ini untuk deserialisasi item
+import 'menu_item.dart';
 
 class PaymentRecord {
   final int? dbId; // ID unik di database
@@ -16,7 +18,7 @@ class PaymentRecord {
 
   PaymentRecord({
     this.dbId,
-    required this.userId, // Wajib diisi
+    required this.userId,
     required this.id,
     required this.buyerName,
     required this.total,
@@ -26,9 +28,7 @@ class PaymentRecord {
     required this.items
   });
 
-  // Konversi PaymentRecord ke Map untuk disimpan di SQLite
   Map<String, dynamic> toMap() {
-    // Serialize items list to JSON string
     final itemsJson = json.encode(items.map((item) => {
       'id': item.item.id,
       'name': item.item.name,
@@ -37,26 +37,26 @@ class PaymentRecord {
     }).toList());
 
     return {
-      'id': id,
       'userId': userId,
+      'id': id,
       'buyerName': buyerName,
       'total': total,
       'paid': paid,
       'change': change,
       'paymentMethod': paymentMethod,
-      'itemsJson': itemsJson, // Simpan item sebagai JSON string
+      'itemsJson': itemsJson,
     };
   }
 
-  // Konversi Map dari SQLite kembali ke PaymentRecord
   factory PaymentRecord.fromMap(Map<String, dynamic> map) {
     final List<dynamic> itemsData = json.decode(map['itemsJson'] as String);
     final List<OrderItem> loadedItems = itemsData.map((itemMap) {
-      // Buat MenuItem tiruan hanya untuk menampung nama dan harga
       final incompleteMenuItem = MenuItem(
         id: itemMap['id'],
         name: itemMap['name'],
-        price: itemMap['price'],
+        price: (itemMap['price'] as num).toDouble(),
+        description: '',
+        image: '',
       );
       return OrderItem(item: incompleteMenuItem, qty: itemMap['qty'] as int);
     }).toList();
@@ -66,9 +66,9 @@ class PaymentRecord {
       userId: map['userId'] as int,
       id: map['id'] as String,
       buyerName: map['buyerName'] as String,
-      total: map['total'] as double,
-      paid: map['paid'] as double,
-      change: map['change'] as double,
+      total: (map['total'] as num).toDouble(),
+      paid: (map['paid'] as num).toDouble(),
+      change: (map['change'] as num).toDouble(),
       paymentMethod: map['paymentMethod'] as String,
       items: loadedItems,
     );

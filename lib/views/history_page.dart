@@ -1,10 +1,13 @@
+// lib/views/screens/history_view.dart
+
 import 'package:flutter/material.dart';
-import '../models/payment.dart';
-import '../models/order_item.dart';
+import 'package:provider/provider.dart';
+import '../../models/payment.dart';
+import '../../models/order_item.dart';
+import '../../view_models/history_view_model.dart';
 
 class HistoryPage extends StatelessWidget {
-  final List<PaymentRecord> history;
-  const HistoryPage({super.key, required this.history});
+  const HistoryPage({super.key});
 
 
   IconData _getPaymentIcon(String method) {
@@ -67,76 +70,82 @@ class HistoryPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (history.isEmpty) return const Center(child: Text('Belum ada riwayat pembayaran'));
+    return Consumer<HistoryViewModel>(
+      builder: (context, historyVM, child) {
+        final history = historyVM.history;
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(12),
-      itemCount: history.length,
-      itemBuilder: (ctx, i) {
-        final h = history[i];
+        if (history.isEmpty) {
+          return const Center(child: Text('Belum ada riwayat pembayaran'));
+        }
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          elevation: 4,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+        return ListView.builder(
+          padding: const EdgeInsets.all(12),
+          itemCount: history.length,
+          itemBuilder: (ctx, i) {
+            final h = history[i];
 
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            return Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              elevation: 4,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
 
-                    Text(
-                      'Transaksi Sukses',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: const Color(0xFF778DA9)), // Secondary Accent #778DA9
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+
+                        const Text(
+                          'Transaksi Sukses',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF778DA9)),
+                        ),
+
+                        Text(
+                          _formatDateTime(h.id),
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                        ),
+                      ],
                     ),
 
-                    Text(
-                      _formatDateTime(h.id),
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    const SizedBox(height: 8),
+
+                    Text('Pembeli: ${h.buyerName}', style: const TextStyle(fontSize: 15)),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(_getPaymentIcon(h.paymentMethod), size: 16, color: Colors.grey.shade600),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${h.paymentMethod}',
+                          style: TextStyle(fontSize: 14, color: Colors.grey.shade800),
+                        ),
+                      ],
+                    ),
+
+                    _buildItemDetails(h.items),
+
+                    const Divider(height: 20),
+
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('TOTAL AKHIR:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        Text(
+                          'Rp ${h.total.toStringAsFixed(0)}',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF0D1B2A)),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-
-                const SizedBox(height: 8),
-
-
-                Text('Pembeli: ${h.buyerName}', style: const TextStyle(fontSize: 15)),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(_getPaymentIcon(h.paymentMethod), size: 16, color: Colors.grey.shade600),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${h.paymentMethod}',
-                      style: TextStyle(fontSize: 14, color: Colors.grey.shade800),
-                    ),
-                  ],
-                ),
-
-
-                _buildItemDetails(h.items),
-
-                const Divider(height: 20),
-
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('TOTAL AKHIR:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    Text(
-                      'Rp ${h.total.toStringAsFixed(0)}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF0D1B2A)), // Dark Primary #0D1B2A
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );

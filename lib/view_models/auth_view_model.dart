@@ -1,7 +1,8 @@
 // lib/view_models/auth_view_model.dart
+
 import 'package:flutter/foundation.dart';
 import '../models/user.dart';
-import '../data/database_helper.dart';
+import '../db/database_helper.dart';
 
 class AuthViewModel extends ChangeNotifier {
   final dbHelper = DatabaseHelper.instance;
