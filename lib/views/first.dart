@@ -1,22 +1,23 @@
+// lib/views/screens/first_view.dart
+
 import 'package:flutter/material.dart';
-import '../widgets/custom_app_bar.dart';
-import 'home.dart';
-import '../data/database_helper.dart'; // Import baru
-import '../models/user.dart'; // Import baru
+import 'package:provider/provider.dart';
+import '../../widgets/custom_app_bar.dart';
+import '../screens/home_view.dart'; // Ganti import ke HomeView
+import '../../view_models/auth_view_model.dart';
+import '../../models/user.dart';
 
-
-class FirstPage extends StatefulWidget {
-  const FirstPage({super.key});
+class FirstView extends StatefulWidget {
+  const FirstView({super.key});
 
   @override
-  State<FirstPage> createState() => _FirstPageState();
+  State<FirstView> createState() => _FirstViewState();
 }
 
-class _FirstPageState extends State<FirstPage> {
+class _FirstViewState extends State<FirstView> {
   final _usernameCtrl = TextEditingController();
-  final _nameCtrl = TextEditingController(); // Untuk field Nama Pembeli saat register
+  final _nameCtrl = TextEditingController();
   bool isRegisterMode = false;
-  final dbHelper = DatabaseHelper.instance;
 
   @override
   void dispose() {
@@ -25,7 +26,8 @@ class _FirstPageState extends State<FirstPage> {
     super.dispose();
   }
 
-  void _submit() async {
+  void _submit(BuildContext context) async {
+    final authViewModel = Provider.of<AuthViewModel>(context, listen: false);
     final username = _usernameCtrl.text.trim();
     final name = _nameCtrl.text.trim();
 
@@ -35,54 +37,34 @@ class _FirstPageState extends State<FirstPage> {
       return;
     }
 
+    bool success = false;
+    String message = '';
+
     if (isRegisterMode) {
-      // Logic Registrasi
       if (name.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Masukkan Nama Pembeli untuk registrasi')));
         return;
       }
-      try {
-        final existingUser = await dbHelper.getUserByUsername(username);
-        if (existingUser != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Username sudah terdaftar. Silakan login.')));
-          return;
-        }
-
-        final newUser = User(username: username, name: name);
-        final newId = await dbHelper.insertUser(newUser);
-
-        if (newId > 0) {
-          final registeredUser = User(id: newId, username: username, name: name);
-          ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Registrasi berhasil. Masuk otomatis.')));
-          _navigateToHome(registeredUser);
-        } else {
-          throw Exception('Gagal menyimpan data user.');
-        }
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Registrasi gagal: ${e.toString()}')));
-      }
+      success = await authViewModel.register(username, name);
+      message = success ? 'Registrasi berhasil. Masuk otomatis.' : 'Username sudah terdaftar atau registrasi gagal.';
     } else {
-      // Logic Login
-      final user = await dbHelper.getUserByUsername(username);
-      if (user != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Login berhasil! Selamat datang, ${user.name}')));
-        _navigateToHome(user);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Username tidak ditemukan. Coba lagi atau Daftar.')));
-      }
+      success = await authViewModel.login(username);
+      final loggedInUser = authViewModel.currentUser;
+      message = success ? 'Login berhasil! Selamat datang, ${loggedInUser?.name}' : 'Username tidak ditemukan. Coba lagi atau Daftar.';
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+
+    if (success && authViewModel.currentUser != null) {
+      _navigateToHome(context, authViewModel.currentUser!);
     }
   }
 
-  void _navigateToHome(User user) {
+  void _navigateToHome(BuildContext context, User user) {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => HomePage(user: user)), // Kirim objek User
+      MaterialPageRoute(builder: (_) => HomeView(user: user)),
     );
   }
 
@@ -98,12 +80,13 @@ class _FirstPageState extends State<FirstPage> {
         child: Column(
           children: [
             const SizedBox(height: 20),
+
             Image.asset(
               'assets/images/logoresto.jpeg',
               height: 250,
               errorBuilder: (_, __, ___) => const SizedBox(
                 height: 250,
-                child: Center(child: Text('LOGO RESTORAN', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF0D1B2A)))),
+                child: Center(child: Text('LOGO RESTORAN', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF0D1B2A)))),
               ),
             ),
             const SizedBox(height: 24),
@@ -126,7 +109,7 @@ class _FirstPageState extends State<FirstPage> {
               width: double.infinity,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF778DA9), foregroundColor: Colors.white),
-                onPressed: _submit,
+                onPressed: () => _submit(context),
                 child: Text(isRegisterMode ? 'Daftar' : 'Masuk'),
               ),
             ),
