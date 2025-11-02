@@ -1,8 +1,28 @@
+// lib/main.dart
+
 import 'package:flutter/material.dart';
-import 'screens/first.dart';
+import 'package:provider/provider.dart'; // BARU
+
+// Import ViewModel
+import 'view_models/auth_view_model.dart';
+import 'view_models/cart_view_model.dart';
+import 'view_models/history_view_model.dart';
+
+// Import View
+import 'views/screens/first_view.dart'; // Ganti dari 'screens/first.dart'
 
 void main() {
-  runApp(const BakeryApp());
+  // Inisialisasi MultiProvider untuk menyediakan semua ViewModel ke seluruh app
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthViewModel()),
+        ChangeNotifierProvider(create: (_) => CartViewModel()),
+        ChangeNotifierProvider(create: (_) => HistoryViewModel()),
+      ],
+      child: const BakeryApp(),
+    ),
+  );
 }
 
 
@@ -46,12 +66,13 @@ class BakeryApp extends StatelessWidget {
           style: ElevatedButton.styleFrom(
             backgroundColor: COLOR_SECONDARY_ACCENT,
             foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(20))),
-            textStyle: TextStyle(fontWeight: FontWeight.bold),
+            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(20))),
+            textStyle: const TextStyle(fontWeight: FontWeight.bold),
           ),
         ),
       ),
-      home: const FirstPage(),
+      // MENGGANTI ke nama View yang baru dan menghapus 'const' pada instance widget.
+      home: const FirstView(),
     );
   }
 }

@@ -1,3 +1,4 @@
+// lib/screens/home.dart
 import 'package:flutter/material.dart';
 import '../widgets/custom_app_bar.dart';
 import '../models/menu_item.dart';
@@ -8,14 +9,17 @@ import 'orders_page.dart';
 import 'payment_page.dart';
 import 'history_page.dart';
 import 'first.dart';
+// Import baru
+import '../models/user.dart';
+import '../data/database_helper.dart';
 
 
 const Color COLOR_DARK_PRIMARY = Color(0xFF0D1B2A);
 const Color COLOR_SECONDARY_ACCENT = Color(0xFF778DA9);
 
 class HomePage extends StatefulWidget {
-  final String buyerName;
-  const HomePage({super.key, required this.buyerName});
+  final User user; // Ganti dari buyerName ke User
+  const HomePage({super.key, required this.user});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -25,15 +29,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late TabController _tabController;
   final List<MenuItem> menu = [];
   final List<OrderItem> cart = [];
-  final List<PaymentRecord> history = [];
+  List<PaymentRecord> history = []; // Ubah menjadi non-final untuk update
 
-
+  final dbHelper = DatabaseHelper.instance; // Inisiasi DB helper
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     _loadMenu();
+    _loadHistory(); // Panggil fungsi untuk memuat history dari DB
   }
 
   @override
@@ -42,6 +47,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  // ... (metode _loadMenu tetap sama)
   void _loadMenu() {
     menu.clear();
     menu.addAll([
@@ -74,6 +80,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     ]);
   }
 
+  // Metode baru untuk memuat history dari database
+  void _loadHistory() async {
+    // Pastikan user.id tidak null setelah login/register
+    if (widget.user.id != null) {
+      final loadedHistory = await dbHelper.getHistoryByUserId(widget.user.id!);
+      setState(() {
+        history = loadedHistory;
+      });
+    }
+  }
+
   void addToCart(MenuItem item, int qty) {
     final found = cart.indexWhere((o) => o.item.id == item.id);
     if (found >= 0) {
@@ -94,7 +111,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         if (newQty > 0) {
           cart[foundIndex].qty = newQty;
         } else {
-
+          // Remove if quantity is 0 or less
           cart.removeAt(foundIndex);
         }
       });
@@ -104,15 +121,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   double cartTotal() => cart.fold(0.0, (p, c) => p + c.total);
 
-  void checkout(double paid, String paymentMethod) {
+  void checkout(double paid, String paymentMethod) async { // Ubah ke async
     final total = cartTotal();
     final change = paid - total;
 
     final List<OrderItem> itemsPurchased = List.from(cart);
 
     final record = PaymentRecord(
+      userId: widget.user.id!, // Gunakan ID User
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      buyerName: widget.buyerName,
+      buyerName: widget.user.name, // Gunakan nama terdaftar
       total: total,
       paid: paid,
       change: change,
@@ -120,8 +138,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       items: itemsPurchased,
     );
 
+    // Simpan record ke database
+    await dbHelper.insertPaymentRecord(record);
+
+    // Muat ulang history dari database dan update UI
+    await _loadHistory();
+
     setState(() {
-      history.add(record);
       cart.clear();
       _tabController.index = 3;
     });
@@ -133,6 +156,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final width = MediaQuery.of(context).size.width;
     final isWide = width > 800;
 
+    final String buyerName = widget.user.name; // Gunakan nama dari objek User
+
     const String currentAppBarTitle = 'EatMood';
 
     return Scaffold(
@@ -140,7 +165,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       appBar: CustomAppBar(title: currentAppBarTitle, actions: [
         Padding(
           padding: const EdgeInsets.only(right: 8.0),
-          child: Center(child: Text(widget.buyerName, style: const TextStyle(color: Colors.white))),
+          child: Center(child: Text(buyerName, style: const TextStyle(color: Colors.white))),
         ),
         IconButton(
           icon: const Icon(Icons.logout),
@@ -165,7 +190,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   children: [
                     Image.asset('assets/images/logo.png', height: 64, errorBuilder: (_, __, ___) => const SizedBox()),
                     const SizedBox(width: 12),
-                    Expanded(child: Text('Welcome, ${widget.buyerName}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+                    Expanded(child: Text('Welcome, $buyerName', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
                     ElevatedButton.icon(
                       onPressed: () => _tabController.animateTo(1),
                       icon: const Icon(Icons.shopping_cart_outlined),
@@ -179,7 +204,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   children: [
                     Image.asset('assets/images/logo.png', height: 64, errorBuilder: (_, __, ___) => const SizedBox()),
                     const SizedBox(height: 8),
-                    Text('Welcome, ${widget.buyerName}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text('Welcome, $buyerName', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ],
                 );
               }
@@ -198,6 +223,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   onProceed: () => _tabController.index = 2,
                   onUpdateQty: updateCartQuantity,
                 ),
+                // Gunakan checkout yang sudah diubah (async dan save ke DB)
                 PaymentPage(total: cartTotal(), onPay: checkout),
                 HistoryPage(history: history),
               ],
