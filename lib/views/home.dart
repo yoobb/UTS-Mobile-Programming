@@ -1,22 +1,22 @@
-// lib/views/home_page.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../widgets/custom_app_bar.dart';
 import '../models/menu_item.dart';
 import '../models/user.dart';
-// --- IMPORTS YANG BENAR DENGAN NAMA FILE LAMA ---
+// --- IMPORTS UNTUK VIEWS DAN VIEWMODELS ---
 import 'menu_page.dart';
 import 'orders_page.dart';
 import 'payment_page.dart';
 import 'history_page.dart';
-import 'first.dart'; // Menggunakan first.dart
-import 'admin_menu_page.dart'; // Import AdminMenuPage (BARU)
+import 'first.dart';
+import 'admin_menu_page.dart';
+import 'admin_orders_page.dart'; // Import AdminOrdersPage
 // ----------------------------------------------------
 import '../view_models/auth_view_model.dart';
 import '../view_models/cart_view_model.dart';
 import '../view_models/history_view_model.dart';
-import '../view_models/menu_view_model.dart'; // Import MenuViewModel (BARU)
+import '../view_models/menu_view_model.dart';
+import '../view_models/admin_order_view_model.dart'; // Import AdminOrderViewModel
 
 const Color COLOR_DARK_PRIMARY = Color(0xFF0D1B2A);
 const Color COLOR_SECONDARY_ACCENT = Color(0xFF778DA9);
@@ -36,13 +36,17 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    // Memuat menu dan history saat halaman dimuat (untuk Customer/Admin)
+    // Memuat menu dan data awal yang relevan
     Future.microtask(() {
       final menuVM = Provider.of<MenuViewModel>(context, listen: false);
       menuVM.loadMenu();
 
-      if (!widget.user.isAdmin && widget.user.id != null) {
-        // Hanya Customer yang perlu memuat History
+      if (widget.user.isAdmin) {
+        // ADMIN: Muat pesanan pending saat Admin login
+        final adminOrderVM = Provider.of<AdminOrderViewModel>(context, listen: false);
+        adminOrderVM.loadPendingOrders();
+      } else if (widget.user.id != null) {
+        // CUSTOMER: Muat History-nya sendiri
         final historyVM = Provider.of<HistoryViewModel>(context, listen: false);
         historyVM.loadHistory(widget.user.id!);
       }
@@ -70,7 +74,7 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-// --- ADMIN LAYOUT (Hanya Menu & Admin Menu) ---
+// --- ADMIN LAYOUT (Hanya Menu, Admin Orders, dan Admin Menu) ---
 
 class AdminHomeLayout extends StatefulWidget {
   final User user;
@@ -83,9 +87,12 @@ class AdminHomeLayout extends StatefulWidget {
 
 class _AdminHomeLayoutState extends State<AdminHomeLayout> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+
+  // Tab untuk Admin
   final List<Tab> bottomTabs = [
     const Tab(icon: Icon(Icons.menu_book), text: 'Menu'),
-    const Tab(icon: Icon(Icons.admin_panel_settings), text: 'Admin Menu'),
+    const Tab(icon: Icon(Icons.receipt_long), text: 'Admin Orders'), // Index 1
+    const Tab(icon: Icon(Icons.admin_panel_settings), text: 'Admin Menu'), // Index 2
   ];
 
   late List<Widget> tabViews;
@@ -94,6 +101,14 @@ class _AdminHomeLayoutState extends State<AdminHomeLayout> with SingleTickerProv
   void initState() {
     super.initState();
     _tabController = TabController(length: bottomTabs.length, vsync: this);
+
+    // Listener untuk memuat ulang data saat pindah ke tab Admin Orders (Index 1)
+    _tabController.addListener(() {
+      if (_tabController.index == 1 && _tabController.indexIsChanging == false) {
+        // Panggil refresh data setiap kali tab ini diakses
+        Provider.of<AdminOrderViewModel>(context, listen: false).loadPendingOrders();
+      }
+    });
   }
 
   @override
@@ -108,8 +123,11 @@ class _AdminHomeLayoutState extends State<AdminHomeLayout> with SingleTickerProv
 
     // INISIALISASI TABVIEWS DENGAN LOGIKA OTORISASI
     tabViews = [
-      // MenuPage untuk dilihat Admin, onAdd: null -> tombol Order HILANG
+      // Tab 0: MenuPage (Admin View, onAdd: null)
       MenuPage(menu: menuVM.menuItems, onAdd: null),
+      // Tab 1: Admin Orders (Pesanan Pending dari semua Customer)
+      const AdminOrdersPage(),
+      // Tab 2: Admin Menu (Kelola Item Menu)
       const AdminMenuPage(),
     ];
 
@@ -125,7 +143,7 @@ class _AdminHomeLayoutState extends State<AdminHomeLayout> with SingleTickerProv
         children: [
           Padding(
             padding: const EdgeInsets.all(12),
-            child: Text('Welcome, ${widget.user.name}. Gunakan tab Admin Menu untuk mengelola item.', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: COLOR_DARK_PRIMARY)),
+            child: Text('Welcome, ${widget.user.name}. Gunakan tab Admin Orders untuk menerima pesanan pelanggan.', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: COLOR_DARK_PRIMARY)),
           ),
           Expanded(
             child: TabBarView(
@@ -163,6 +181,7 @@ class CustomerHomeLayout extends StatefulWidget {
 class _CustomerHomeLayoutState extends State<CustomerHomeLayout> with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
+  // Tab untuk Customer
   final List<Tab> bottomTabs = [
     const Tab(icon: Icon(Icons.menu_book), text: 'Menu'),
     const Tab(icon: Icon(Icons.shopping_cart), text: 'Orders'),
@@ -214,13 +233,14 @@ class _CustomerHomeLayoutState extends State<CustomerHomeLayout> with SingleTick
     }
 
     try {
+      // Saat checkout, status defaultnya adalah 'pending'
       final record = await cartVM.prepareCheckout(paid, paymentMethod, user.id!, user.name);
       await historyVM.saveRecord(record);
 
       _tabController.animateTo(bottomTabs.indexWhere((tab) => tab.text == 'History'));
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pembayaran Rp ${paid.toStringAsFixed(0)} berhasil dengan ${paymentMethod}')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pembayaran Rp ${paid.toStringAsFixed(0)} berhasil dengan ${paymentMethod}. Menunggu konfirmasi Admin.')));
       }
 
     } catch (e) {
