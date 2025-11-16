@@ -12,6 +12,28 @@ class MenuItem {
     required this.price,
     this.description = '',
     this.image = '',
-    this.category = 'Makanan',
+    this.category = 'Main Course',
   });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'price': price,
+      'description': description,
+      'image': image,
+      'category': category,
+    };
+  }
+
+  factory MenuItem.fromMap(Map<String, dynamic> map) {
+    return MenuItem(
+      id: map['id'] as String,
+      name: map['name'] as String,
+      price: (map['price'] as num).toDouble(),
+      description: map['description'] as String? ?? '',
+      image: map['image'] as String? ?? '',
+      category: map['category'] as String? ?? 'Main Course',
+    );
+  }
 }
