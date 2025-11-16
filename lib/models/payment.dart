@@ -1,5 +1,3 @@
-// lib/models/payment.dart
-
 import 'dart:convert';
 import 'order_item.dart';
 import 'menu_item.dart';
@@ -15,6 +13,7 @@ class PaymentRecord {
   final double change;
   final String paymentMethod;
   final List<OrderItem> items;
+  final String status; // <<-- BARU: Status transaksi
 
   PaymentRecord({
     this.dbId,
@@ -25,7 +24,8 @@ class PaymentRecord {
     required this.paid,
     required this.change,
     required this.paymentMethod,
-    required this.items
+    required this.items,
+    this.status = 'pending', // <<-- DEFAULT: pending
   });
 
   Map<String, dynamic> toMap() {
@@ -45,6 +45,7 @@ class PaymentRecord {
       'change': change,
       'paymentMethod': paymentMethod,
       'itemsJson': itemsJson,
+      'status': status, // <<-- TAMBAH: status
     };
   }
 
@@ -71,6 +72,7 @@ class PaymentRecord {
       change: (map['change'] as num).toDouble(),
       paymentMethod: map['paymentMethod'] as String,
       items: loadedItems,
+      status: map['status'] as String? ?? 'pending', // <<-- AMBIL: status
     );
   }
 }
