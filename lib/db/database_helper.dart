@@ -76,7 +76,9 @@ class DatabaseHelper {
       // Menambahkan kolom 'role' ke tabel users (jika belum ada)
       try {
         await db.execute("ALTER TABLE $tableUsers ADD COLUMN role TEXT NOT NULL DEFAULT 'customer'");
-      } catch (_) {}
+      } catch (_) {
+        // Kolom sudah ada, atau error lain. Diabaikan karena ini untuk migrasi.
+      }
 
       // Membuat tabel menu (jika belum ada)
       await db.execute('''
@@ -97,18 +99,9 @@ class DatabaseHelper {
 
   Future<int> insertUser(User user) async {
     Database db = await instance.database;
-    return await db.insert(tableUsers, user.toMapWithoutId());
+    // Menggunakan toMap() yang sudah di-update
+    return await db.insert(tableUsers, user.toMap());
   }
-
-  // Metode untuk insert user tanpa ID (karena autoincrement)
-  // Perlu user.toMap() yang dimodifikasi. Karena User.toMap() tidak ada di file lama
-  // kita tambahkan user.toMapWithoutId() di sini, dan asumsikan toMap() di User.dart
-  // sudah dimodifikasi untuk tidak menyertakan ID jika null.
-
-  // Catatan: Fungsi ini TIDAK ADA di file lama, tetapi diperlukan.
-  // Asumsikan User.toMap() sekarang menangani 'id' sebagai nullable.
-
-  // Update: Setelah modifikasi User.toMap() di file lain, kita gunakan itu.
 
   Future<User?> getUserByUsername(String username) async {
     Database db = await instance.database;
@@ -126,7 +119,6 @@ class DatabaseHelper {
   }
 
   // Tambahkan metode untuk mendapatkan user Admin default.
-  // Ini diperlukan di FirstPage untuk mendaftarkan akun Admin.
   Future<User?> getAdminUser() async {
     Database db = await instance.database;
     List<Map<String, dynamic>> maps = await db.query(
@@ -181,7 +173,7 @@ class DatabaseHelper {
 
   Future<List<MenuItem>> getAllMenuItems() async {
     Database db = await instance.database;
-    List<Map<String, dynamic>> maps = await db.query(tableMenu);
+    List<Map<String, dynamic>> maps = await db.query(tableMenu, orderBy: 'category, name');
 
     return List.generate(maps.length, (i) {
       return MenuItem.fromMap(maps[i]);

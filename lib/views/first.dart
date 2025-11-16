@@ -41,9 +41,11 @@ class _FirstPageState extends State<FirstPage> {
     // 1. Pastikan Admin terdaftar
     final adminUser = await authViewModel.dbHelper.getAdminUser();
     if (adminUser == null) {
+      // Masukkan User dengan role 'admin'
       await authViewModel.dbHelper.insertUser(User(username: 'admin', name: 'Admin Resto', role: 'admin'));
       if(mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Akun Admin (admin/Admin Resto) telah dibuat otomatis.')));
+        // Tampilkan pesan bahwa akun admin dibuat
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Akun Admin (admin/Admin Resto) telah dibuat otomatis. Gunakan untuk manajemen menu.')));
       }
     }
 
@@ -78,7 +80,7 @@ class _FirstPageState extends State<FirstPage> {
             const SnackBar(content: Text('Masukkan Nama Pembeli untuk registrasi')));
         return;
       }
-      // Semua user yang mendaftar manual akan memiliki role 'customer'
+      // Semua user yang mendaftar manual akan memiliki role 'customer' (default)
       success = await authViewModel.register(username, name);
       message = success ? 'Registrasi berhasil. Masuk otomatis.' : 'Username sudah terdaftar atau registrasi gagal.';
     } else {
@@ -126,7 +128,7 @@ class _FirstPageState extends State<FirstPage> {
 
             // Tambahkan catatan untuk Admin Login
             const Text(
-              'Catatan: Login sebagai Admin dengan Username: admin',
+              'Catatan: Login Admin: username="admin"',
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const SizedBox(height: 12),

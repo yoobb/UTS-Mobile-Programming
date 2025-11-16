@@ -1,3 +1,5 @@
+// lib/views/screens/menu_view.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart'; // Import Provider
 import '../../models/menu_item.dart';
@@ -8,12 +10,12 @@ const Color COLOR_SECONDARY_ACCENT = Color(0xFF778DA9);
 
 class MenuPage extends StatefulWidget {
   final List<MenuItem> menu; // Menerima data menu dari luar
-  final void Function(MenuItem item, int qty) onAdd;
+  final void Function(MenuItem item, int qty)? onAdd; // <<-- DIUBAH: Membuat onAdd nullable
 
   const MenuPage({
     super.key,
     required this.menu,
-    required this.onAdd,
+    this.onAdd, // <<-- DIUBAH: Membuat onAdd opsional
   });
 
   @override
@@ -22,13 +24,14 @@ class MenuPage extends StatefulWidget {
 
 class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
   late TabController _tabController;
-  // Ambil kategori secara dinamis dari menu yang ada
+
+  // Mendapatkan daftar kategori unik dari menu yang dimuat
   List<String> get categories {
     final Set<String> uniqueCategories = {};
     for (var item in widget.menu) {
       uniqueCategories.add(item.category);
     }
-    // Pastikan urutan kategori selalu sama, atau set default
+    // Mengurutkan dan memastikan kategori utama ada di depan
     const defaultCategories = ['Main Course', 'Dessert', 'Drink'];
     final sortedCategories = defaultCategories.where((c) => uniqueCategories.contains(c)).toList();
     for (var c in uniqueCategories) {
@@ -39,21 +42,29 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
     return sortedCategories;
   }
 
+  // Inisialisasi awal
+  void _initializeTabController() {
+    // Pastikan length minimal 1 jika tidak ada kategori
+    _tabController = TabController(length: categories.isEmpty ? 1 : categories.length, vsync: this);
+  }
+
   @override
   void initState() {
     super.initState();
-    // Inisialisasi controller di sini dengan jumlah kategori yang dinamis
-    _tabController = TabController(length: categories.length, vsync: this);
+    _initializeTabController();
   }
 
   @override
   void didUpdateWidget(covariant MenuPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Perlu menginisialisasi ulang TabController jika daftar menu berubah
-    // (misalnya setelah Admin menambahkan/menghapus item)
-    if (widget.menu != oldWidget.menu || categories.length != _tabController.length) {
+    // Jika jumlah kategori berubah, rebuild TabController
+    if (categories.length != _tabController.length) {
       _tabController.dispose();
-      _tabController = TabController(length: categories.length, vsync: this);
+      _initializeTabController();
+      // Force rebuild tampilan untuk TabBar dan TabBarView
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
     }
   }
 
@@ -132,44 +143,52 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text('Rp ${m.price.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, color: COLOR_DARK_PRIMARY)),
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: COLOR_SECONDARY_ACCENT,
-                                padding: const EdgeInsets.symmetric(horizontal: 10),
-                                minimumSize: Size.zero,
+
+                            // LOGIC OTORISASI: Tombol Order hanya muncul jika onAdd TIDAK NULL
+                            if (widget.onAdd != null)
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: COLOR_SECONDARY_ACCENT,
+                                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                                  minimumSize: Size.zero,
+                                ),
+                                onPressed: () {
+                                  // Dialog logic
+                                  showDialog(
+                                    context: context,
+                                    builder: (_) {
+                                      int qty = 1;
+                                      return StatefulBuilder(builder: (c, setState) {
+                                        return AlertDialog(
+                                          title: Text('Tambah ${m.name}'),
+                                          content: Row(children: [
+                                            IconButton(onPressed: () => setState(() { if (qty>1) qty--; }), icon: const Icon(Icons.remove)),
+                                            Text('$qty'),
+                                            IconButton(onPressed: () => setState(() => qty++), icon: const Icon(Icons.add)),
+                                          ]),
+                                          actions: [
+                                            TextButton(onPressed: () => Navigator.pop(c), child: const Text('Batal')),
+                                            ElevatedButton(
+                                              style: ElevatedButton.styleFrom(backgroundColor: COLOR_SECONDARY_ACCENT),
+                                              onPressed: () {
+                                                // Memanggil fungsi onAdd! karena sudah dicek di parent widget
+                                                widget.onAdd!(m, qty);
+                                                Navigator.pop(c);
+                                              },
+                                              child: const Text('Tambah'),
+                                            ),
+                                          ],
+                                        );
+                                      });
+                                    },
+                                  );
+                                },
+                                child: const Text('Order', style: TextStyle(fontSize: 12)),
                               ),
-                              onPressed: () {
-                                // Dialog logic
-                                showDialog(
-                                  context: context,
-                                  builder: (_) {
-                                    int qty = 1;
-                                    return StatefulBuilder(builder: (c, setState) {
-                                      return AlertDialog(
-                                        title: Text('Tambah ${m.name}'),
-                                        content: Row(children: [
-                                          IconButton(onPressed: () => setState(() { if (qty>1) qty--; }), icon: const Icon(Icons.remove)),
-                                          Text('$qty'),
-                                          IconButton(onPressed: () => setState(() => qty++), icon: const Icon(Icons.add)),
-                                        ]),
-                                        actions: [
-                                          TextButton(onPressed: () => Navigator.pop(c), child: const Text('Batal')),
-                                          ElevatedButton(
-                                            style: ElevatedButton.styleFrom(backgroundColor: COLOR_SECONDARY_ACCENT),
-                                            onPressed: () {
-                                              widget.onAdd(m, qty);
-                                              Navigator.pop(c);
-                                            },
-                                            child: const Text('Tambah'),
-                                          ),
-                                        ],
-                                      );
-                                    });
-                                  },
-                                );
-                              },
-                              child: const Text('Order', style: TextStyle(fontSize: 12)),
-                            )
+
+                            // Tampilkan teks 'Admin View' atau biarkan kosong jika Admin
+                            if (widget.onAdd == null)
+                              const Text('Admin View', style: TextStyle(fontSize: 12, color: Colors.grey)),
                           ],
                         ),
                       ],
@@ -197,15 +216,13 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
       return const Center(child: Text('Menu Kosong. Silakan hubungi Admin untuk menambah menu.'));
     }
 
-    // Panggil ulang setstate untuk memastikan TabBarController di-re-initialize
-    // jika daftar kategori berubah setelah loadMenu() selesai.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (categories.length != _tabController.length && mounted) {
-        setState(() {
-          _tabController = TabController(length: categories.length, vsync: this);
-        });
-      }
-    });
+    // List kategori untuk TabBar
+    final currentCategories = categories;
+
+    // Jika tidak ada kategori, tampilkan pesan kosong
+    if (currentCategories.isEmpty) {
+      return const Center(child: Text('Menu Kosong.'));
+    }
 
     return Column(
       children: [
@@ -214,18 +231,18 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
           color: COLOR_DARK_PRIMARY,
           child: TabBar(
             controller: _tabController,
-            isScrollable: true,
+            isScrollable: currentCategories.length > 3,
             labelColor: Colors.white,
             unselectedLabelColor: COLOR_SECONDARY_ACCENT,
             indicatorColor: Colors.white,
-            tabs: categories.map((c) => Tab(text: c)).toList(),
+            tabs: currentCategories.map((c) => Tab(text: c)).toList(),
           ),
         ),
 
         Expanded(
           child: TabBarView(
             controller: _tabController,
-            children: categories.map((category) {
+            children: currentCategories.map((category) {
               final filteredMenu = _getMenuByCategory(category);
               return _buildMenuGrid(filteredMenu);
             }).toList(),

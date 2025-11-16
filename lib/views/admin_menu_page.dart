@@ -148,3 +148,5 @@ class AdminMenuPage extends StatelessWidget {
         ],
       ),
     );
+  }
+}
