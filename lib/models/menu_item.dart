@@ -25,7 +25,7 @@ class MenuItem {
       'category': category,
     };
   }
-
+  
   factory MenuItem.fromMap(Map<String, dynamic> map) {
     return MenuItem(
       id: map['id'] as String,
