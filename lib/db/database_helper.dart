@@ -4,15 +4,16 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/user.dart';
 import '../models/payment.dart';
-import '../models/menu_item.dart'; // Import model baru
+import '../models/menu_item.dart';
 
 class DatabaseHelper {
   static const _databaseName = "bakery_app.db";
-  static const _databaseVersion = 3; // VERSI NAIK KE 3
+  static const _databaseVersion = 4; // <--- PASTIKAN VERSI INI ADALAH 4
 
   static const tableUsers = 'users';
   static const tableHistory = 'history';
-  static const tableMenu = 'menu'; // Tabel baru
+  static const tableMenu = 'menu';
+  static const tableApiPrices = 'api_prices'; // <--- TABEL BARU
 
   DatabaseHelper._privateConstructor();
   static final DatabaseHelper instance = DatabaseHelper._privateConstructor();
@@ -29,7 +30,7 @@ class DatabaseHelper {
     return await openDatabase(path,
         version: _databaseVersion,
         onCreate: _onCreate,
-        onUpgrade: _onUpgrade); // Tambahkan onUpgrade
+        onUpgrade: _onUpgrade);
   }
 
   Future _onCreate(Database db, int version) async {
@@ -43,7 +44,7 @@ class DatabaseHelper {
           )
           ''');
 
-    // Tabel History (Sekarang menyimpan status)
+    // Tabel History
     await db.execute('''
           CREATE TABLE $tableHistory (
             dbId INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -55,7 +56,7 @@ class DatabaseHelper {
             change REAL NOT NULL,
             paymentMethod TEXT NOT NULL,
             itemsJson TEXT NOT NULL,
-            status TEXT NOT NULL DEFAULT 'pending', -- TAMBAH STATUS
+            status TEXT NOT NULL DEFAULT 'pending', 
             FOREIGN KEY (userId) REFERENCES $tableUsers (id)
           )
           ''');
@@ -71,12 +72,18 @@ class DatabaseHelper {
             category TEXT NOT NULL
           )
           ''');
+
+    // TABEL BARU: API Prices
+    await db.execute('''
+          CREATE TABLE $tableApiPrices (
+            id TEXT PRIMARY KEY,       -- ID resep dari TheMealDB (idMeal)
+            price REAL NOT NULL
+          )
+          ''');
   }
 
-  // Handle upgrade database (migrasi)
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
-      // Migrasi dari V1 ke V2 (Tambah Role dan Tabel Menu)
       try {
         await db.execute("ALTER TABLE $tableUsers ADD COLUMN role TEXT NOT NULL DEFAULT 'customer'");
       } catch (_) {}
@@ -94,16 +101,24 @@ class DatabaseHelper {
     }
 
     if (oldVersion < 3) {
-      // Migrasi dari V2 ke V3 (Tambah status ke Tabel History)
       try {
         await db.execute("ALTER TABLE $tableHistory ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'");
       } catch (_) {}
+    }
+
+    if (oldVersion < 4) {
+      // Migrasi dari V3 ke V4 (Tambah Tabel API Prices)
+      await db.execute('''
+          CREATE TABLE IF NOT EXISTS $tableApiPrices (
+            id TEXT PRIMARY KEY,
+            price REAL NOT NULL
+          )
+          ''');
     }
   }
 
 
   // --- USER/LOGIN METHODS ---
-
   Future<int> insertUser(User user) async {
     Database db = await instance.database;
     return await db.insert(tableUsers, user.toMap());
@@ -138,10 +153,8 @@ class DatabaseHelper {
   }
 
   // --- HISTORY/PAYMENT METHODS ---
-
   Future<int> insertPaymentRecord(PaymentRecord record) async {
     Database db = await instance.database;
-    // status defaultnya 'pending' dari model
     return await db.insert(tableHistory, record.toMap());
   }
 
@@ -149,7 +162,6 @@ class DatabaseHelper {
     Database db = await instance.database;
     List<Map<String, dynamic>> maps = await db.query(
       tableHistory,
-      // Tambahkan 'status' ke kolom
       columns: ['dbId', 'userId', 'id', 'buyerName', 'total', 'paid', 'change', 'paymentMethod', 'itemsJson', 'status'],
       where: 'userId = ?',
       whereArgs: [userId],
@@ -161,7 +173,6 @@ class DatabaseHelper {
     });
   }
 
-  // Ambil semua pesanan pending untuk Admin (Memperbaiki Error)
   Future<List<PaymentRecord>> getPendingOrders() async {
     Database db = await instance.database;
     List<Map<String, dynamic>> maps = await db.query(
@@ -177,7 +188,6 @@ class DatabaseHelper {
     });
   }
 
-  // Update status pesanan menjadi 'completed' (Memperbaiki Error)
   Future<int> updateOrderStatus(int dbId, String newStatus) async {
     Database db = await instance.database;
     return await db.update(
@@ -189,7 +199,6 @@ class DatabaseHelper {
   }
 
   // --- MENU CRUD METHODS ---
-
   Future<int> insertMenuItem(MenuItem item) async {
     Database db = await instance.database;
     return await db.insert(tableMenu, item.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
@@ -217,5 +226,32 @@ class DatabaseHelper {
     Database db = await instance.database;
     final count = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM $tableMenu'));
     return count ?? 0;
+  }
+
+  // --- API PRICE METHODS (BARU) ---
+
+  // Simpan/Update harga API yang disesuaikan (MEMPERBAIKI ERROR INI)
+  Future<int> insertApiPrice(String id, double price) async {
+    Database db = await instance.database;
+    return await db.insert(
+        tableApiPrices,
+        {'id': id, 'price': price},
+        conflictAlgorithm: ConflictAlgorithm.replace
+    );
+  }
+
+  // Ambil harga API yang tersimpan (MEMPERBAIKI ERROR INI)
+  Future<double?> getApiPrice(String id) async {
+    Database db = await instance.database;
+    List<Map<String, dynamic>> maps = await db.query(
+      tableApiPrices,
+      columns: ['price'],
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    if (maps.isNotEmpty) {
+      return (maps.first['price'] as num).toDouble();
+    }
+    return null;
   }
 }

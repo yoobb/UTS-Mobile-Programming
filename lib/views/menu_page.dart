@@ -1,21 +1,23 @@
 // lib/views/screens/menu_view.dart
 
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // Import Provider
+import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/menu_item.dart';
-import '../../view_models/menu_view_model.dart'; // Import MenuViewModel
+import '../../view_models/menu_view_model.dart';
+import '../../models/meal.dart';
 
 const Color COLOR_DARK_PRIMARY = Color(0xFF0D1B2A);
 const Color COLOR_SECONDARY_ACCENT = Color(0xFF778DA9);
 
 class MenuPage extends StatefulWidget {
-  final List<MenuItem> menu; // Menerima data menu dari luar
-  final void Function(MenuItem item, int qty)? onAdd; // <<-- DIUBAH: Membuat onAdd nullable
+  final List<MenuItem> menu;
+  final void Function(MenuItem item, int qty)? onAdd;
 
   const MenuPage({
     super.key,
     required this.menu,
-    this.onAdd, // <<-- DIUBAH: Membuat onAdd opsional
+    this.onAdd,
   });
 
   @override
@@ -25,26 +27,33 @@ class MenuPage extends StatefulWidget {
 class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
   late TabController _tabController;
 
-  // Mendapatkan daftar kategori unik dari menu yang dimuat
+  // MODIFIKASI: Logika untuk membuat Main Course menjadi tab API
   List<String> get categories {
     final Set<String> uniqueCategories = {};
+
+    // 1. Kumpulkan kategori dari menu lokal, TAPI HILANGKAN 'Main Course' lama.
     for (var item in widget.menu) {
-      uniqueCategories.add(item.category);
+      if (item.category != 'Main Course') {
+        uniqueCategories.add(item.category);
+      }
     }
-    // Mengurutkan dan memastikan kategori utama ada di depan
-    const defaultCategories = ['Main Course', 'Dessert', 'Drink'];
-    final sortedCategories = defaultCategories.where((c) => uniqueCategories.contains(c)).toList();
+
+    // 2. Tentukan urutan kategori lokal yang tersisa (Dessert, Drink, dll.)
+    const prioritizedCategories = ['Dessert', 'Drink'];
+    final sortedCategories = prioritizedCategories.where((c) => uniqueCategories.contains(c)).toList();
     for (var c in uniqueCategories) {
       if (!sortedCategories.contains(c)) {
         sortedCategories.add(c);
       }
     }
+
+    // 3. Tambahkan "Main Course" BARU di awal (untuk konten API Recipes)
+    sortedCategories.insert(0, 'Main Course');
+
     return sortedCategories;
   }
 
-  // Inisialisasi awal
   void _initializeTabController() {
-    // Pastikan length minimal 1 jika tidak ada kategori
     _tabController = TabController(length: categories.isEmpty ? 1 : categories.length, vsync: this);
   }
 
@@ -57,17 +66,14 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
   @override
   void didUpdateWidget(covariant MenuPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Jika jumlah kategori berubah, rebuild TabController
     if (categories.length != _tabController.length) {
       _tabController.dispose();
       _initializeTabController();
-      // Force rebuild tampilan untuk TabBar dan TabBarView
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) setState(() {});
       });
     }
   }
-
 
   @override
   void dispose() {
@@ -76,11 +82,150 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
   }
 
   List<MenuItem> _getMenuByCategory(String category) {
+    // Fungsi ini sekarang hanya akan dipanggil untuk 'Dessert', 'Drink', dll.
     return widget.menu.where((item) => item.category == category).toList();
   }
 
+
+  Widget _buildApiMealGrid(List<Meal> meals) {
+    if (meals.isEmpty) {
+      return const Center(child: Text('Tidak ada resep dari API. Coba ganti query pencarian.'));
+    }
+
+    final menuVM = Provider.of<MenuViewModel>(context, listen: false);
+
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: GridView.builder(
+        itemCount: meals.length,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 0.85,
+        ),
+        itemBuilder: (context, i) {
+          final m = meals[i];
+
+          return FutureBuilder<double>(
+            future: menuVM.getPriceForApiMeal(m.idMeal),
+            builder: (context, snapshot) {
+              final currentPrice = snapshot.data ?? 35000.0;
+
+              // REAKTIVASI: Buat MenuItem agar bisa di-order
+              final MenuItem apiMenuItem = MenuItem(
+                id: m.idMeal,
+                name: m.strMeal,
+                price: currentPrice,
+                description: m.strInstructions.split('.').first,
+                image: m.strMealThumb,
+                category: m.strCategory,
+              );
+
+              return Card(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                        child: m.strMealThumb.isNotEmpty
+                            ? CachedNetworkImage(
+                          imageUrl: m.strMealThumb,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+                          errorWidget: (context, url, error) => Container(
+                            color: const Color(0xFFE0E1DD),
+                            child: const Center(child: Icon(Icons.broken_image, color: COLOR_SECONDARY_ACCENT, size: 40)),
+                          ),
+                        )
+                            : Container(
+                          color: const Color(0xFFE0E1DD),
+                          child: const Center(child: Text(
+                              'No Image',
+                              style: TextStyle(color: COLOR_SECONDARY_ACCENT, fontSize: 14)
+                          )),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(m.strMeal, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          const SizedBox(height: 4),
+
+                          Text('Category: ${m.strCategory} (${m.strArea})', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                          const SizedBox(height: 8),
+
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              // Tampilkan harga yang sudah dimuat
+                              Text('Rp ${apiMenuItem.price.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: COLOR_DARK_PRIMARY)),
+
+                              // TOMBOL ORDER (Muncul jika onAdd TIDAK NULL)
+                              if (widget.onAdd != null)
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: COLOR_SECONDARY_ACCENT,
+                                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                                    minimumSize: Size.zero,
+                                  ),
+                                  onPressed: () {
+                                    showDialog(
+                                      context: context,
+                                      builder: (_) {
+                                        int qty = 1;
+                                        return StatefulBuilder(builder: (c, setState) {
+                                          return AlertDialog(
+                                            title: Text('Tambah ${apiMenuItem.name}'),
+                                            content: Row(children: [
+                                              IconButton(onPressed: () => setState(() { if (qty>1) qty--; }), icon: const Icon(Icons.remove)),
+                                              Text('$qty'),
+                                              IconButton(onPressed: () => setState(() => qty++), icon: const Icon(Icons.add)),
+                                            ]),
+                                            actions: [
+                                              TextButton(onPressed: () => Navigator.pop(c), child: const Text('Batal')),
+                                              ElevatedButton(
+                                                style: ElevatedButton.styleFrom(backgroundColor: COLOR_SECONDARY_ACCENT),
+                                                onPressed: () {
+                                                  widget.onAdd!(apiMenuItem, qty);
+                                                  Navigator.pop(c);
+                                                },
+                                                child: const Text('Tambah'),
+                                              ),
+                                            ],
+                                          );
+                                        });
+                                      },
+                                    );
+                                  },
+                                  child: const Text('Order', style: TextStyle(fontSize: 12)),
+                                ),
+                              // Tampilkan status jika Admin
+                              if (widget.onAdd == null)
+                                const Text('Admin View', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+
   Widget _buildMenuGrid(List<MenuItem> filteredMenu) {
-    // Tampilkan loading jika menu kosong tapi sedang loading
     if (filteredMenu.isEmpty) {
       return const Center(child: Text('Menu kosong untuk kategori ini.'));
     }
@@ -144,7 +289,6 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
                           children: [
                             Text('Rp ${m.price.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, color: COLOR_DARK_PRIMARY)),
 
-                            // LOGIC OTORISASI: Tombol Order hanya muncul jika onAdd TIDAK NULL
                             if (widget.onAdd != null)
                               ElevatedButton(
                                 style: ElevatedButton.styleFrom(
@@ -153,7 +297,6 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
                                   minimumSize: Size.zero,
                                 ),
                                 onPressed: () {
-                                  // Dialog logic
                                   showDialog(
                                     context: context,
                                     builder: (_) {
@@ -171,7 +314,6 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
                                             ElevatedButton(
                                               style: ElevatedButton.styleFrom(backgroundColor: COLOR_SECONDARY_ACCENT),
                                               onPressed: () {
-                                                // Memanggil fungsi onAdd! karena sudah dicek di parent widget
                                                 widget.onAdd!(m, qty);
                                                 Navigator.pop(c);
                                               },
@@ -186,7 +328,6 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
                                 child: const Text('Order', style: TextStyle(fontSize: 12)),
                               ),
 
-                            // Tampilkan teks 'Admin View' atau biarkan kosong jika Admin
                             if (widget.onAdd == null)
                               const Text('Admin View', style: TextStyle(fontSize: 12, color: Colors.grey)),
                           ],
@@ -205,24 +346,29 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    // Ambil status loading dari MenuViewModel
     final menuVM = Provider.of<MenuViewModel>(context);
 
     if (menuVM.isLoading) {
       return const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(COLOR_SECONDARY_ACCENT)));
     }
 
-    if (widget.menu.isEmpty) {
-      return const Center(child: Text('Menu Kosong. Silakan hubungi Admin untuk menambah menu.'));
+    if (widget.menu.isEmpty && menuVM.apiMeals.isEmpty) {
+      return const Center(child: Text('Menu Kosong. Silakan hubungi Admin untuk menambah menu atau periksa koneksi internet Anda.'));
     }
 
-    // List kategori untuk TabBar
     final currentCategories = categories;
 
-    // Jika tidak ada kategori, tampilkan pesan kosong
-    if (currentCategories.isEmpty) {
-      return const Center(child: Text('Menu Kosong.'));
+    if (_tabController.length != currentCategories.length) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _tabController.dispose();
+          _initializeTabController();
+          setState(() {});
+        }
+      });
+      return const Center(child: CircularProgressIndicator());
     }
+
 
     return Column(
       children: [
@@ -243,6 +389,11 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
           child: TabBarView(
             controller: _tabController,
             children: currentCategories.map((category) {
+              if (category == 'Main Course') {
+                // Tampilkan API Meals di tab 'Main Course'
+                return _buildApiMealGrid(menuVM.apiMeals);
+              }
+              // Tampilkan menu lokal untuk kategori lain
               final filteredMenu = _getMenuByCategory(category);
               return _buildMenuGrid(filteredMenu);
             }).toList(),

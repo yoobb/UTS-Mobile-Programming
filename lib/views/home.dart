@@ -41,6 +41,9 @@ class _HomePageState extends State<HomePage> {
       final menuVM = Provider.of<MenuViewModel>(context, listen: false);
       menuVM.loadMenu();
 
+      // BARU: Muat juga data resep dari API (Contoh: mencari 'Chicken')
+      menuVM.loadApiMeals('Chicken');
+
       if (widget.user.isAdmin) {
         // ADMIN: Muat pesanan pending saat Admin login
         final adminOrderVM = Provider.of<AdminOrderViewModel>(context, listen: false);

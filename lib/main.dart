@@ -6,6 +6,8 @@ import 'view_models/auth_view_model.dart';
 import 'view_models/cart_view_model.dart';
 import 'view_models/history_view_model.dart';
 import 'view_models/menu_view_model.dart'; // Import MenuViewModel
+// BARU: Import AdminOrderViewModel
+import 'view_models/admin_order_view_model.dart';
 
 // Import View dengan nama file yang Anda inginkan
 import 'views/first.dart'; // Menggunakan first.dart
@@ -18,6 +20,8 @@ void main() {
         ChangeNotifierProvider(create: (_) => CartViewModel()),
         ChangeNotifierProvider(create: (_) => HistoryViewModel()),
         ChangeNotifierProvider(create: (_) => MenuViewModel()), // Tambahkan MenuViewModel
+        // BARU: Tambahkan AdminOrderViewModel
+        ChangeNotifierProvider(create: (_) => AdminOrderViewModel()),
       ],
       child: const BakeryApp(),
     ),

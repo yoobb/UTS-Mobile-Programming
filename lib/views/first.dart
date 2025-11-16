@@ -126,12 +126,6 @@ class _FirstPageState extends State<FirstPage> {
             ),
             const SizedBox(height: 24),
 
-            // Tambahkan catatan untuk Admin Login
-            const Text(
-              'Catatan: Login Admin: username="admin"',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            const SizedBox(height: 12),
 
             TextField(
               controller: _usernameCtrl,

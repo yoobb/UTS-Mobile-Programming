@@ -62,18 +62,26 @@ class AdminMenuPage extends StatelessWidget {
     final nameCtrl = TextEditingController();
     final priceCtrl = TextEditingController();
     final descCtrl = TextEditingController();
-    String category = 'Main Course'; // Default category
+
+    // DAFTAR KATEGORI YANG DIPERBOLEHKAN (MENGHILANGKAN 'Main Course')
+    final validCategories = ['Dessert', 'Drink'];
+    String category = validCategories.first; // Default diatur ke Dessert
 
     showDialog(
       context: context,
       builder: (ctx) {
         return StatefulBuilder(builder: (c, setState) {
           return AlertDialog(
-            title: const Text('Tambah Item Menu'),
+            title: const Text('Tambah Item Menu Lokal'),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // Catatan untuk Admin
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 12.0),
+                  ),
+
                   TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Nama Menu')),
                   TextField(controller: priceCtrl, decoration: const InputDecoration(labelText: 'Harga (Rp)'), keyboardType: TextInputType.number),
                   TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Deskripsi')),
@@ -81,7 +89,7 @@ class AdminMenuPage extends StatelessWidget {
                   DropdownButtonFormField<String>(
                     value: category,
                     decoration: const InputDecoration(labelText: 'Kategori'),
-                    items: ['Main Course', 'Dessert', 'Drink']
+                    items: validCategories // <-- MENGGUNAKAN DAFTAR YANG DIFILTER
                         .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                         .toList(),
                     onChanged: (newValue) => setState(() => category = newValue!),
@@ -111,6 +119,7 @@ class AdminMenuPage extends StatelessWidget {
                     category: category,
                   );
 
+                  // Menyimpan menu lokal (Hanya Dessert atau Drink)
                   await menuVM.addMenuItem(newItem);
                   if(c.mounted) Navigator.pop(c);
                   if(context.mounted) {
