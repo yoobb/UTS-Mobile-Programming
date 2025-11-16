@@ -1,5 +1,3 @@
-// lib/main.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -7,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'view_models/auth_view_model.dart';
 import 'view_models/cart_view_model.dart';
 import 'view_models/history_view_model.dart';
+import 'view_models/menu_view_model.dart'; // Import MenuViewModel
 
 // Import View dengan nama file yang Anda inginkan
 import 'views/first.dart'; // Menggunakan first.dart
@@ -18,6 +17,7 @@ void main() {
         ChangeNotifierProvider(create: (_) => AuthViewModel()),
         ChangeNotifierProvider(create: (_) => CartViewModel()),
         ChangeNotifierProvider(create: (_) => HistoryViewModel()),
+        ChangeNotifierProvider(create: (_) => MenuViewModel()), // Tambahkan MenuViewModel
       ],
       child: const BakeryApp(),
     ),
