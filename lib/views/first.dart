@@ -27,8 +27,6 @@ class _FirstPageState extends State<FirstPage> {
 
   // Data menu awal yang akan disimpan ke database jika kosong
   final List<MenuItem> initialMenu = [
-    MenuItem(id: 'm1', name: 'Spaghetti', price: 45000, description: 'Spaghetti lembut dengan saus daging tomat khas Italia, disajikan hangat dengan taburan keju parmesan.', image: 'assets/images/spaghetti.jpg', category: 'Main Course'),
-    MenuItem(id: 'm2', name: 'Mac and Cheese', price: 40000, description: 'Makaroni berpadu dengan saus keju yang lembut dan creamy, disajikan hangat dengan taburan keju panggang di atasnya.', image: 'assets/images/mac.jpg', category: 'Main Course'),
     MenuItem(id: 'd1', name: 'Lava Cake', price: 25000, description: 'Kue cokelat lembut dengan lelehan cokelat hangat di dalamnya.', image: 'assets/images/lavacake.jpg', category: 'Dessert'),
     MenuItem(id: 'b5', name: 'Americano', price: 25000, description: 'Espresso murni yang dicampur air panas, menghasilkan rasa kopi kuat dan ringan sekaligus.', image: 'assets/images/americano.jpg', category: 'Drink'),
   ];

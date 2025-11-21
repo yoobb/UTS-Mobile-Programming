@@ -73,7 +73,7 @@ class DatabaseHelper {
           )
           ''');
 
-    // TABEL BARU: API Prices
+    // TABEL BARU: Main Course(API)
     await db.execute('''
           CREATE TABLE $tableApiPrices (
             id TEXT PRIMARY KEY,       -- ID resep dari TheMealDB (idMeal)
@@ -107,7 +107,6 @@ class DatabaseHelper {
     }
 
     if (oldVersion < 4) {
-      // Migrasi dari V3 ke V4 (Tambah Tabel API Prices)
       await db.execute('''
           CREATE TABLE IF NOT EXISTS $tableApiPrices (
             id TEXT PRIMARY KEY,

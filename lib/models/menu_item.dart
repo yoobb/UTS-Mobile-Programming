@@ -1,3 +1,4 @@
+// lib/models/menu_item.dart
 class MenuItem {
   final String id;
   final String name;
@@ -15,6 +16,25 @@ class MenuItem {
     this.category = 'Main Course',
   });
 
+  // [BARU: Method copyWith]
+  MenuItem copyWith({
+    String? id,
+    String? name,
+    double? price,
+    String? description,
+    String? image,
+    String? category,
+  }) {
+    return MenuItem(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      price: price ?? this.price,
+      description: description ?? this.description,
+      image: image ?? this.image,
+      category: category ?? this.category,
+    );
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -25,7 +45,7 @@ class MenuItem {
       'category': category,
     };
   }
-  
+
   factory MenuItem.fromMap(Map<String, dynamic> map) {
     return MenuItem(
       id: map['id'] as String,
