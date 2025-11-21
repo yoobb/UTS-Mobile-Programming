@@ -1,4 +1,4 @@
-// lib/views/screens/menu_view.dart
+// lib/views/menu_page.dart
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -27,28 +27,27 @@ class MenuPage extends StatefulWidget {
 class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
   late TabController _tabController;
 
-  // MODIFIKASI: Logika untuk membuat Main Course menjadi tab API
+  // MODIFIKASI: Logika untuk membuat Main Course, Dessert, dan Drink menjadi tab API
   List<String> get categories {
     final Set<String> uniqueCategories = {};
 
-    // 1. Kumpulkan kategori dari menu lokal, TAPI HILANGKAN 'Main Course' lama.
+    // 1. Kumpulkan kategori dari menu lokal yang tersisa (BUKAN MAIN COURSE, DESSERT, DRINK)
     for (var item in widget.menu) {
-      if (item.category != 'Main Course') {
+      if (item.category != 'Main Course' && item.category != 'Dessert' && item.category != 'Drink') {
         uniqueCategories.add(item.category);
       }
     }
 
-    // 2. Tentukan urutan kategori lokal yang tersisa (Dessert, Drink, dll.)
-    const prioritizedCategories = ['Dessert', 'Drink'];
-    final sortedCategories = prioritizedCategories.where((c) => uniqueCategories.contains(c)).toList();
+    // 2. Tentukan urutan kategori API (Main Course, Dessert, Drink)
+    const prioritizedApiCategories = ['Main Course', 'Dessert', 'Drink'];
+    final sortedCategories = [...prioritizedApiCategories];
+
+    // 3. Tambahkan kategori lokal yang tersisa
     for (var c in uniqueCategories) {
       if (!sortedCategories.contains(c)) {
         sortedCategories.add(c);
       }
     }
-
-    // 3. Tambahkan "Main Course" BARU di awal (untuk konten API Recipes)
-    sortedCategories.insert(0, 'Main Course');
 
     return sortedCategories;
   }
@@ -82,14 +81,125 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
   }
 
   List<MenuItem> _getMenuByCategory(String category) {
-    // Fungsi ini sekarang hanya akan dipanggil untuk 'Dessert', 'Drink', dll.
+    // Fungsi ini sekarang hanya akan dipanggil untuk kategori lokal tersisa
     return widget.menu.where((item) => item.category == category).toList();
   }
 
+  // [BARU: Widget Placeholder untuk Gambar Hilang]
+  Widget _noImagePlaceholder() {
+    return Container(
+      color: const Color(0xFFE0E1DD),
+      child: const Center(child: Icon(Icons.broken_image, color: COLOR_SECONDARY_ACCENT, size: 40)),
+    );
+  }
 
-  Widget _buildApiMealGrid(List<Meal> meals) {
+  // [BARU: Widget Tombol Order yang Dapat Digunakan Kembali]
+  Widget _buildOrderButton(MenuItem item) {
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: COLOR_SECONDARY_ACCENT,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        minimumSize: Size.zero,
+      ),
+      onPressed: () {
+        showDialog(
+          context: context,
+          builder: (_) {
+            int qty = 1;
+            return StatefulBuilder(builder: (c, setState) {
+              return AlertDialog(
+                title: Text('Tambah ${item.name}'),
+                content: Row(children: [
+                  IconButton(onPressed: () => setState(() { if (qty>1) qty--; }), icon: const Icon(Icons.remove)),
+                  Text('$qty'),
+                  IconButton(onPressed: () => setState(() => qty++), icon: const Icon(Icons.add)),
+                ]),
+                actions: [
+                  TextButton(onPressed: () => Navigator.pop(c), child: const Text('Batal')),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: COLOR_SECONDARY_ACCENT),
+                    onPressed: () {
+                      widget.onAdd!(item, qty);
+                      Navigator.pop(c);
+                    },
+                    child: const Text('Tambah'),
+                  ),
+                ],
+              );
+            });
+          },
+        );
+      },
+      child: const Text('Order', style: TextStyle(fontSize: 12)),
+    );
+  }
+
+  // [BARU: Reusable Card Widget untuk semua Item (Lokal/API)]
+  Widget _buildMenuItemCard(MenuItem item, {bool isApiItem = false, String secondaryText = ''}) {
+    final bool isNetworkImage = isApiItem || item.image.startsWith('http');
+    final String imagePath = item.image;
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              child: imagePath.isNotEmpty
+                  ? (isNetworkImage
+                  ? CachedNetworkImage(
+                imageUrl: imagePath,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+                errorWidget: (context, url, error) => _noImagePlaceholder(),
+              )
+                  : Image.asset(
+                imagePath,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _noImagePlaceholder(),
+              ))
+                  : _noImagePlaceholder(),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 4),
+
+                Text(secondaryText.isEmpty ? item.description : secondaryText, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 8),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Rp ${item.price.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: COLOR_DARK_PRIMARY)),
+
+                    if (widget.onAdd != null)
+                      _buildOrderButton(item)
+                    else
+                      const Text('Admin View', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+  // [MODIFIKASI: Builder untuk MealDB (Main Course)]
+  Widget _buildMealGrid(List<Meal> meals) {
     if (meals.isEmpty) {
-      return const Center(child: Text('Tidak ada resep dari API. Coba ganti query pencarian.'));
+      return const Center(child: Text('Tidak ada resep utama dari API. Coba ganti query pencarian.'));
     }
 
     final menuVM = Provider.of<MenuViewModel>(context, listen: false);
@@ -106,117 +216,68 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
         ),
         itemBuilder: (context, i) {
           final m = meals[i];
+          final mealId = m.idMeal;
 
           return FutureBuilder<double>(
-            future: menuVM.getPriceForApiMeal(m.idMeal),
+            future: menuVM.getPriceForApiMeal(mealId),
             builder: (context, snapshot) {
               final currentPrice = snapshot.data ?? 35000.0;
 
-              // REAKTIVASI: Buat MenuItem agar bisa di-order
               final MenuItem apiMenuItem = MenuItem(
-                id: m.idMeal,
+                id: mealId,
                 name: m.strMeal,
                 price: currentPrice,
                 description: m.strInstructions.split('.').first,
                 image: m.strMealThumb,
-                category: m.strCategory,
+                category: 'Main Course',
               );
 
-              return Card(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                        child: m.strMealThumb.isNotEmpty
-                            ? CachedNetworkImage(
-                          imageUrl: m.strMealThumb,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
-                          errorWidget: (context, url, error) => Container(
-                            color: const Color(0xFFE0E1DD),
-                            child: const Center(child: Icon(Icons.broken_image, color: COLOR_SECONDARY_ACCENT, size: 40)),
-                          ),
-                        )
-                            : Container(
-                          color: const Color(0xFFE0E1DD),
-                          child: const Center(child: Text(
-                              'No Image',
-                              style: TextStyle(color: COLOR_SECONDARY_ACCENT, fontSize: 14)
-                          )),
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(m.strMeal, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                          const SizedBox(height: 4),
+              return _buildMenuItemCard(apiMenuItem, isApiItem: true, secondaryText: 'Category: ${m.strCategory} (${m.strArea})');
+            },
+          );
+        },
+      ),
+    );
+  }
 
-                          Text('Category: ${m.strCategory} (${m.strArea})', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                          const SizedBox(height: 8),
+  // [BARU: Builder untuk Drinks/Desserts API]
+  Widget _buildDrinksDessertsGrid(List<DessertDrinkApiItem> items) {
+    if (items.isEmpty) {
+      return const Center(child: Text('Tidak ada menu dari API Drinks/Desserts.'));
+    }
 
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              // Tampilkan harga yang sudah dimuat
-                              Text('Rp ${apiMenuItem.price.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: COLOR_DARK_PRIMARY)),
+    final menuVM = Provider.of<MenuViewModel>(context, listen: false);
 
-                              // TOMBOL ORDER (Muncul jika onAdd TIDAK NULL)
-                              if (widget.onAdd != null)
-                                ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: COLOR_SECONDARY_ACCENT,
-                                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                                    minimumSize: Size.zero,
-                                  ),
-                                  onPressed: () {
-                                    showDialog(
-                                      context: context,
-                                      builder: (_) {
-                                        int qty = 1;
-                                        return StatefulBuilder(builder: (c, setState) {
-                                          return AlertDialog(
-                                            title: Text('Tambah ${apiMenuItem.name}'),
-                                            content: Row(children: [
-                                              IconButton(onPressed: () => setState(() { if (qty>1) qty--; }), icon: const Icon(Icons.remove)),
-                                              Text('$qty'),
-                                              IconButton(onPressed: () => setState(() => qty++), icon: const Icon(Icons.add)),
-                                            ]),
-                                            actions: [
-                                              TextButton(onPressed: () => Navigator.pop(c), child: const Text('Batal')),
-                                              ElevatedButton(
-                                                style: ElevatedButton.styleFrom(backgroundColor: COLOR_SECONDARY_ACCENT),
-                                                onPressed: () {
-                                                  widget.onAdd!(apiMenuItem, qty);
-                                                  Navigator.pop(c);
-                                                },
-                                                child: const Text('Tambah'),
-                                              ),
-                                            ],
-                                          );
-                                        });
-                                      },
-                                    );
-                                  },
-                                  child: const Text('Order', style: TextStyle(fontSize: 12)),
-                                ),
-                              // Tampilkan status jika Admin
-                              if (widget.onAdd == null)
-                                const Text('Admin View', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: GridView.builder(
+        itemCount: items.length,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 0.85,
+        ),
+        itemBuilder: (context, i) {
+          final m = items[i];
+          final itemId = m.id;
+
+          return FutureBuilder<double>(
+            future: menuVM.getPriceForApiMeal(itemId),
+            builder: (context, snapshot) {
+              // Gunakan harga dari DB jika ada, jika tidak, gunakan harga dari API
+              final currentPrice = snapshot.data ?? m.price;
+
+              final finalMenuItem = MenuItem(
+                id: itemId,
+                name: m.name,
+                price: currentPrice,
+                description: m.description,
+                image: m.image, // URL Gambar dari MockAPI
+                category: m.category,
               );
+
+              return _buildMenuItemCard(finalMenuItem, isApiItem: true, secondaryText: m.description);
             },
           );
         },
@@ -225,7 +286,8 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
   }
 
 
-  Widget _buildMenuGrid(List<MenuItem> filteredMenu) {
+  // [MODIFIKASI: Builder untuk Menu Lokal yang Tersisa]
+  Widget _buildMenuGridLocal(List<MenuItem> filteredMenu) {
     if (filteredMenu.isEmpty) {
       return const Center(child: Text('Menu kosong untuk kategori ini.'));
     }
@@ -244,105 +306,14 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
           ),
           itemBuilder: (context, i) {
             final m = filteredMenu[i];
-            return Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                      child: m.image.isNotEmpty
-                          ? Image.asset(
-                        m.image,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-
-                        errorBuilder: (_, __, ___) => Container(
-                          color: const Color(0xFFE0E1DD),
-                          child: const Center(child: Icon(Icons.image_not_supported, color: COLOR_SECONDARY_ACCENT, size: 40)),
-                        ),
-                      )
-                          : Container(
-                        color: const Color(0xFFE0E1DD),
-                        child: const Center(child: Text(
-                            'No Image',
-                            style: TextStyle(color: COLOR_SECONDARY_ACCENT, fontSize: 14)
-                        )),
-                      ),
-                    ),
-                  ),
-
-                  Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(m.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                        const SizedBox(height: 4),
-
-                        Text(m.description, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
-                        const SizedBox(height: 8),
-
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text('Rp ${m.price.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, color: COLOR_DARK_PRIMARY)),
-
-                            if (widget.onAdd != null)
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: COLOR_SECONDARY_ACCENT,
-                                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                                  minimumSize: Size.zero,
-                                ),
-                                onPressed: () {
-                                  showDialog(
-                                    context: context,
-                                    builder: (_) {
-                                      int qty = 1;
-                                      return StatefulBuilder(builder: (c, setState) {
-                                        return AlertDialog(
-                                          title: Text('Tambah ${m.name}'),
-                                          content: Row(children: [
-                                            IconButton(onPressed: () => setState(() { if (qty>1) qty--; }), icon: const Icon(Icons.remove)),
-                                            Text('$qty'),
-                                            IconButton(onPressed: () => setState(() => qty++), icon: const Icon(Icons.add)),
-                                          ]),
-                                          actions: [
-                                            TextButton(onPressed: () => Navigator.pop(c), child: const Text('Batal')),
-                                            ElevatedButton(
-                                              style: ElevatedButton.styleFrom(backgroundColor: COLOR_SECONDARY_ACCENT),
-                                              onPressed: () {
-                                                widget.onAdd!(m, qty);
-                                                Navigator.pop(c);
-                                              },
-                                              child: const Text('Tambah'),
-                                            ),
-                                          ],
-                                        );
-                                      });
-                                    },
-                                  );
-                                },
-                                child: const Text('Order', style: TextStyle(fontSize: 12)),
-                              ),
-
-                            if (widget.onAdd == null)
-                              const Text('Admin View', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            );
+            // Menggunakan builder yang sama, dengan isApiItem: false (default)
+            return _buildMenuItemCard(m, secondaryText: m.description);
           },
         ),
       );
     });
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -352,7 +323,7 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
       return const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(COLOR_SECONDARY_ACCENT)));
     }
 
-    if (widget.menu.isEmpty && menuVM.apiMeals.isEmpty) {
+    if (widget.menu.isEmpty && menuVM.apiMeals.isEmpty && menuVM.apiDrinksDesserts.isEmpty) {
       return const Center(child: Text('Menu Kosong. Silakan hubungi Admin untuk menambah menu atau periksa koneksi internet Anda.'));
     }
 
@@ -390,12 +361,16 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
             controller: _tabController,
             children: currentCategories.map((category) {
               if (category == 'Main Course') {
-                // Tampilkan API Meals di tab 'Main Course'
-                return _buildApiMealGrid(menuVM.apiMeals);
+                // Tampilkan API Meals (MealDB) di tab 'Main Course'
+                return _buildMealGrid(menuVM.apiMeals);
+              } else if (category == 'Dessert' || category == 'Drink') {
+                // [Tampilkan API Drinks/Desserts di tab 'Dessert' dan 'Drink']
+                final filteredItems = menuVM.apiDrinksDesserts.where((item) => item.category == category).toList();
+                return _buildDrinksDessertsGrid(filteredItems);
               }
               // Tampilkan menu lokal untuk kategori lain
               final filteredMenu = _getMenuByCategory(category);
-              return _buildMenuGrid(filteredMenu);
+              return _buildMenuGridLocal(filteredMenu);
             }).toList(),
           ),
         ),
