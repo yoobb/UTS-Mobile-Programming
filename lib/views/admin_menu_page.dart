@@ -65,6 +65,7 @@ class AdminMenuPage extends StatelessWidget {
     final descCtrl = TextEditingController();
 
     // [MODIFIKASI: Kategori Lokal]
+    // Kategori Dessert dan Drink dihapus karena diambil dari API
     final List<String> localCategories = ['Main Course', 'Snack', 'Other'];
     String category = localCategories.first; // Default diatur ke Main Course
 

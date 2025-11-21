@@ -136,7 +136,8 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
 
   // [BARU: Reusable Card Widget untuk semua Item (Lokal/API)]
   Widget _buildMenuItemCard(MenuItem item, {bool isApiItem = false, String secondaryText = ''}) {
-    final bool isNetworkImage = isApiItem || item.image.startsWith('http');
+    // Gambar jaringan hanya digunakan jika item.image tidak kosong DAN isApiItem benar
+    final bool isNetworkImage = item.image.isNotEmpty && isApiItem;
     final String imagePath = item.image;
 
     return Card(
@@ -147,8 +148,7 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
           Expanded(
             child: ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-              child: imagePath.isNotEmpty
-                  ? (isNetworkImage
+              child: imagePath.isNotEmpty && isNetworkImage
                   ? CachedNetworkImage(
                 imageUrl: imagePath,
                 width: double.infinity,
@@ -156,13 +156,14 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
                 placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
                 errorWidget: (context, url, error) => _noImagePlaceholder(),
               )
-                  : Image.asset(
+                  : (imagePath.isNotEmpty && !isNetworkImage
+                  ? Image.asset(
                 imagePath,
                 width: double.infinity,
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => _noImagePlaceholder(),
-              ))
-                  : _noImagePlaceholder(),
+              )
+                  : _noImagePlaceholder()), // Menampilkan placeholder jika imagePath kosong
             ),
           ),
           Padding(
@@ -240,7 +241,7 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
     );
   }
 
-  // [BARU: Builder untuk Drinks/Desserts API]
+  // [BARU: Builder untuk Drinks/Desserts API] - MENGAKTIFKAN GAMBAR ASLI
   Widget _buildDrinksDessertsGrid(List<DessertDrinkApiItem> items) {
     if (items.isEmpty) {
       return const Center(child: Text('Tidak ada menu dari API Drinks/Desserts.'));
@@ -273,10 +274,11 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
                 name: m.name,
                 price: currentPrice,
                 description: m.description,
-                image: m.image, // URL Gambar dari MockAPI
+                image: m.image, // <--- PERBAIKAN: MENGGUNAKAN URL GAMBAR ASLI
                 category: m.category,
               );
 
+              // Kita tetap menggunakan isApiItem: true agar logika pemuatan harga dari DB tetap berjalan
               return _buildMenuItemCard(finalMenuItem, isApiItem: true, secondaryText: m.description);
             },
           );
@@ -317,6 +319,7 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    // Akses VM di sini untuk check loading dan memastikan build trigger
     final menuVM = Provider.of<MenuViewModel>(context);
 
     if (menuVM.isLoading) {
@@ -359,14 +362,22 @@ class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
         Expanded(
           child: TabBarView(
             controller: _tabController,
+            // [FIX UTAMA]: Memaksa Reaktivitas dengan Consumer di dalam TabBarView
             children: currentCategories.map((category) {
               if (category == 'Main Course') {
-                // Tampilkan API Meals (MealDB) di tab 'Main Course'
                 return _buildMealGrid(menuVM.apiMeals);
               } else if (category == 'Dessert' || category == 'Drink') {
-                // [Tampilkan API Drinks/Desserts di tab 'Dessert' dan 'Drink']
-                final filteredItems = menuVM.apiDrinksDesserts.where((item) => item.category == category).toList();
-                return _buildDrinksDessertsGrid(filteredItems);
+                // Gunakan Consumer untuk memastikan list item yang dikirim ke grid adalah yang terbaru
+                return Consumer<MenuViewModel>(
+                  builder: (context, vm, child) {
+                    final items = vm.apiDrinksDesserts;
+                    // Filter item berdasarkan kategori yang sedang aktif
+                    final filteredItems = items.where((item) => item.category == category).toList();
+
+                    // Panggil grid builder dengan filteredItems yang sudah dijamin terbaru
+                    return _buildDrinksDessertsGrid(filteredItems);
+                  },
+                );
               }
               // Tampilkan menu lokal untuk kategori lain
               final filteredMenu = _getMenuByCategory(category);

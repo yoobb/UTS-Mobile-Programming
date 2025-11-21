@@ -3,6 +3,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/meal.dart';
+import 'package:flutter/foundation.dart'; // [FIX: Menambahkan import ini untuk kDebugMode]
 
 class MealService {
   final String _baseUrl = 'www.themealdb.com';
