@@ -1,3 +1,4 @@
+// lib/views/home.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../widgets/custom_app_bar.dart';
@@ -21,6 +22,7 @@ import '../view_models/admin_order_view_model.dart'; // Import AdminOrderViewMod
 const Color COLOR_DARK_PRIMARY = Color(0xFF0D1B2A);
 const Color COLOR_SECONDARY_ACCENT = Color(0xFF778DA9);
 
+// --- BASE WIDGET ---
 
 class HomePage extends StatefulWidget {
   final User user;
@@ -35,16 +37,23 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    // Memuat menu dan data awal yang relevan
     Future.microtask(() {
       final menuVM = Provider.of<MenuViewModel>(context, listen: false);
       menuVM.loadMenu();
 
+      // BARU: Muat juga data resep dari API (Contoh: mencari 'Chicken')
       menuVM.loadApiMeals('Chicken');
 
+      // [BARU: Muat data Dessert & Drink dari API]
+      menuVM.loadApiDrinksDesserts();
+
       if (widget.user.isAdmin) {
+        // ADMIN: Muat pesanan pending saat Admin login
         final adminOrderVM = Provider.of<AdminOrderViewModel>(context, listen: false);
         adminOrderVM.loadPendingOrders();
       } else if (widget.user.id != null) {
+        // CUSTOMER: Muat History-nya sendiri
         final historyVM = Provider.of<HistoryViewModel>(context, listen: false);
         historyVM.loadHistory(widget.user.id!);
       }
@@ -231,6 +240,7 @@ class _CustomerHomeLayoutState extends State<CustomerHomeLayout> with SingleTick
     }
 
     try {
+      // Saat checkout, status defaultnya adalah 'pending'
       final record = await cartVM.prepareCheckout(paid, paymentMethod, user.id!, user.name);
       await historyVM.saveRecord(record);
 
