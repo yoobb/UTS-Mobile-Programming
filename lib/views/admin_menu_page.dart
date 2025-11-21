@@ -1,3 +1,4 @@
+// lib/views/admin_menu_page.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/menu_item.dart';
@@ -63,9 +64,9 @@ class AdminMenuPage extends StatelessWidget {
     final priceCtrl = TextEditingController();
     final descCtrl = TextEditingController();
 
-    // DAFTAR KATEGORI YANG DIPERBOLEHKAN (MENGHILANGKAN 'Main Course')
-    final validCategories = ['Dessert', 'Drink'];
-    String category = validCategories.first; // Default diatur ke Dessert
+    // [MODIFIKASI: Kategori Lokal]
+    final List<String> localCategories = ['Main Course', 'Snack', 'Other'];
+    String category = localCategories.first; // Default diatur ke Main Course
 
     showDialog(
       context: context,
@@ -89,7 +90,7 @@ class AdminMenuPage extends StatelessWidget {
                   DropdownButtonFormField<String>(
                     value: category,
                     decoration: const InputDecoration(labelText: 'Kategori'),
-                    items: validCategories // <-- MENGGUNAKAN DAFTAR YANG DIFILTER
+                    items: localCategories // <-- MENGGUNAKAN DAFTAR BARU
                         .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                         .toList(),
                     onChanged: (newValue) => setState(() => category = newValue!),
