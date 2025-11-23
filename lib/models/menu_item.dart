@@ -4,7 +4,7 @@ class MenuItem {
   final String name;
   final double price;
   final String description;
-  final String image;
+  final String image; // Field image sudah ada
   final String category;
 
   MenuItem({
@@ -12,11 +12,11 @@ class MenuItem {
     required this.name,
     required this.price,
     this.description = '',
-    this.image = '',
+    this.image = '', // Default tetap string kosong
     this.category = 'Main Course',
   });
 
-  // [BARU: Method copyWith]
+  // [MODIFIKASI: Method copyWith diperbarui untuk menyertakan image]
   MenuItem copyWith({
     String? id,
     String? name,
@@ -30,7 +30,7 @@ class MenuItem {
       name: name ?? this.name,
       price: price ?? this.price,
       description: description ?? this.description,
-      image: image ?? this.image,
+      image: image ?? this.image, // Menyertakan field image
       category: category ?? this.category,
     );
   }

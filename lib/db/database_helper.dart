@@ -1,4 +1,4 @@
-// lib/data/database_helper.dart
+// lib/db/database_helper.dart
 
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
@@ -203,6 +203,19 @@ class DatabaseHelper {
     return await db.insert(tableMenu, item.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
+  // [FUNGSI UPDATE menu item lokal]
+  Future<int> updateMenuItem(MenuItem item) async {
+    Database db = await instance.database;
+    final map = item.toMap();
+    map.remove('id');
+    return await db.update(
+        tableMenu,
+        map,
+        where: 'id = ?',
+        whereArgs: [item.id]
+    );
+  }
+
   Future<int> deleteMenuItem(String id) async {
     Database db = await instance.database;
     return await db.delete(
@@ -227,9 +240,7 @@ class DatabaseHelper {
     return count ?? 0;
   }
 
-  // --- API PRICE METHODS (BARU) ---
-
-  // Simpan/Update harga API yang disesuaikan (MEMPERBAIKI ERROR INI)
+  // --- API PRICE METHODS ---
   Future<int> insertApiPrice(String id, double price) async {
     Database db = await instance.database;
     return await db.insert(
@@ -239,7 +250,6 @@ class DatabaseHelper {
     );
   }
 
-  // Ambil harga API yang tersimpan (MEMPERBAIKI ERROR INI)
   Future<double?> getApiPrice(String id) async {
     Database db = await instance.database;
     List<Map<String, dynamic>> maps = await db.query(
