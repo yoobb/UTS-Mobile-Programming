@@ -63,7 +63,7 @@ class AdminMenuPage extends StatelessWidget {
                       title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold)),
                       subtitle: Text(
                         'ID: ${item.id} | Kategori: ${item.category} | Rp ${item.price.toStringAsFixed(0)} ' +
-                            (isWebItem ? '(Web)' : '(Lokal)'),
+                            (isWebItem ? '' : '(Lokal)'),
                         style: TextStyle(color: isWebItem ? Colors.blue : Colors.black54),
                       ),
                       trailing: Row(
@@ -112,7 +112,7 @@ class AdminMenuPage extends StatelessWidget {
           const bool isWebItem = true;
 
           return AlertDialog(
-            title: const Text('Tambah Item Menu (Web)'), // Tetapkan ke (Web)
+            title: const Text('Tambah Item Menu'), // Tetapkan ke (Web)
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -200,7 +200,7 @@ class AdminMenuPage extends StatelessWidget {
           final categories = isWebItem ? webCategories : localCategories;
 
           return AlertDialog(
-            title: Text('Edit Item Menu (${isWebItem ? 'Web' : 'Lokal'})'),
+            title: Text('Edit Item Menu (${isWebItem ? '' : 'Lokal'})'),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -208,7 +208,7 @@ class AdminMenuPage extends StatelessWidget {
                   if (isWebItem)
                     const Padding(
                       padding: EdgeInsets.only(bottom: 12.0),
-                      child: Text('Perubahan akan dikirim ke Web Service.', style: TextStyle(fontSize: 12, color: Colors.blueGrey)),
+                      child: Text('Perubahan akan dikirim.', style: TextStyle(fontSize: 12, color: Colors.blueGrey)),
                     ),
 
                   TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Nama Menu')),
@@ -286,7 +286,7 @@ class AdminMenuPage extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Konfirmasi Hapus'),
-        content: Text('Anda yakin ingin menghapus menu "${item.name}" dari ${isWebItem ? 'Web' : 'Lokal'}?'),
+        content: Text('Anda yakin ingin menghapus menu "${item.name}" dari ${isWebItem ? '' : 'Lokal'}?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
           ElevatedButton(

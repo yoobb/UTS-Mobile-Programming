@@ -1,316 +1,374 @@
-// lib/views/admin_menu_page.dart
+// lib/views/menu_page.dart
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/menu_item.dart';
-import '../view_models/menu_view_model.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../models/menu_item.dart';
+import '../../view_models/menu_view_model.dart';
+import '../../models/meal.dart';
 
 const Color COLOR_DARK_PRIMARY = Color(0xFF0D1B2A);
 const Color COLOR_SECONDARY_ACCENT = Color(0xFF778DA9);
 
-class AdminMenuPage extends StatelessWidget {
-  const AdminMenuPage({super.key});
+class MenuPage extends StatefulWidget {
+  final List<MenuItem> menu;
+  final void Function(MenuItem item, int qty)? onAdd;
+
+  const MenuPage({
+    super.key,
+    required this.menu,
+    this.onAdd,
+  });
 
   @override
-  Widget build(BuildContext context) {
-    return Consumer<MenuViewModel>(
-      builder: (context, menuVM, child) {
-        if (menuVM.isLoading) {
-          return const Center(child: CircularProgressIndicator());
-        }
+  State<MenuPage> createState() => _MenuPageState();
+}
 
-        final List<MenuItem> localMenu = menuVM.menuItems;
-        final List<MenuItem> webMenu = menuVM.drinksDesserts.map((d) => d.toMenuItem()).toList();
+class _MenuPageState extends State<MenuPage> with TickerProviderStateMixin {
+  late TabController _tabController;
 
-        final List<MenuItem> combinedMenu = [...localMenu, ...webMenu];
+  List<String> get categories {
+    final Set<String> uniqueCategories = {};
 
-        combinedMenu.sort((a, b) {
-          final aIsWeb = (a.category == 'Dessert' || a.category == 'Drink');
-          final bIsWeb = (b.category == 'Dessert' || b.category == 'Drink');
-          if (aIsWeb && !bIsWeb) return 1;
-          if (!aIsWeb && bIsWeb) return -1;
-          return a.name.compareTo(b.name);
-        });
+    for (var item in widget.menu) {
+      if (item.category != 'Main Course' && item.category != 'Dessert' && item.category != 'Drink') {
+        uniqueCategories.add(item.category);
+      }
+    }
 
-        return Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => _showAddMenuDialog(context, menuVM),
-                  icon: const Icon(Icons.add_box),
-                  label: const Text('Tambah Menu Baru'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: COLOR_SECONDARY_ACCENT,
+    const prioritizedWebCategories = ['Main Course', 'Dessert', 'Drink'];
+    final sortedCategories = [...prioritizedWebCategories];
+
+    for (var c in uniqueCategories) {
+      if (!sortedCategories.contains(c)) {
+        sortedCategories.add(c);
+      }
+    }
+
+    return sortedCategories;
+  }
+
+  void _initializeTabController() {
+    _tabController = TabController(length: categories.isEmpty ? 1 : categories.length, vsync: this);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeTabController();
+  }
+
+  @override
+  void didUpdateWidget(covariant MenuPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (categories.length != _tabController.length) {
+      _tabController.dispose();
+      _initializeTabController();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  List<MenuItem> _getMenuByCategory(String category) {
+    return widget.menu.where((item) => item.category == category).toList();
+  }
+
+  // [Widget Placeholder untuk Gambar Hilang]
+  Widget _noImagePlaceholder() {
+    return Container(
+      color: const Color(0xFFE0E1DD),
+      child: const Center(child: Icon(Icons.broken_image, color: COLOR_SECONDARY_ACCENT, size: 40)),
+    );
+  }
+
+  // [Widget Tombol Order yang Dapat Digunakan Kembali]
+  Widget _buildOrderButton(MenuItem item) {
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: COLOR_SECONDARY_ACCENT,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        minimumSize: Size.zero,
+      ),
+      onPressed: () {
+        showDialog(
+          context: context,
+          builder: (_) {
+            int qty = 1;
+            return StatefulBuilder(builder: (c, setState) {
+              return AlertDialog(
+                title: Text('Tambah ${item.name}'),
+                content: Row(children: [
+                  IconButton(onPressed: () => setState(() { if (qty>1) qty--; }), icon: const Icon(Icons.remove)),
+                  Text('$qty'),
+                  IconButton(onPressed: () => setState(() => qty++), icon: const Icon(Icons.add)),
+                ]),
+                actions: [
+                  TextButton(onPressed: () => Navigator.pop(c), child: const Text('Batal')),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: COLOR_SECONDARY_ACCENT),
+                    onPressed: () {
+                      widget.onAdd!(item, qty);
+                      Navigator.pop(c);
+                    },
+                    child: const Text('Tambah'),
                   ),
-                ),
-              ),
-            ),
-
-            Expanded(
-              child: ListView.builder(
-                itemCount: combinedMenu.length,
-                itemBuilder: (ctx, i) {
-                  final item = combinedMenu[i];
-                  final bool isWebItem = (item.category == 'Dessert' || item.category == 'Drink');
-
-                  return Card(
-                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    child: ListTile(
-                      onTap: () => _showEditDialog(context, menuVM, item, isWebItem),
-                      title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Text(
-                        'ID: ${item.id} | Kategori: ${item.category} | Rp ${item.price.toStringAsFixed(0)} ' +
-                            (isWebItem ? '(Web)' : '(Lokal)'),
-                        style: TextStyle(color: isWebItem ? Colors.blue : Colors.black54),
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit, color: COLOR_DARK_PRIMARY),
-                            onPressed: () => _showEditDialog(context, menuVM, item, isWebItem),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () => _confirmDelete(context, menuVM, item, isWebItem),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
+                ],
+              );
+            });
+          },
         );
       },
+      child: const Text('Order', style: TextStyle(fontSize: 12)),
     );
   }
 
-  // [MODIFIKASI: FUNGSI TAMBAH MENU BARU]
-  void _showAddMenuDialog(BuildContext context, MenuViewModel menuVM) {
-    final nameCtrl = TextEditingController();
-    final priceCtrl = TextEditingController();
-    final descCtrl = TextEditingController();
-    final imageCtrl = TextEditingController(); // BARU: Controller untuk URL Gambar
+  // [Reusable Card Widget untuk semua Item (Lokal/Web)]
+  Widget _buildMenuItemCard(MenuItem item, {bool isWebItem = false, String secondaryText = ''}) {
+    // Gunakan isWebItem untuk menentukan apakah menggunakan CachedNetworkImage (URL)
+    final bool isNetworkImage = item.image.isNotEmpty && isWebItem;
+    final String imagePath = item.image;
 
-    // HANYA kategori Web yang ditampilkan untuk item baru
-    final List<String> webCategories = ['Dessert', 'Drink'];
-
-    // Defaultkan ke kategori Web (Dessert)
-    String category = webCategories.first;
-
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return StatefulBuilder(builder: (c, setState) {
-
-          // isWebItem selalu TRUE di sini karena hanya Dessert/Drink yang ada di dropdown
-          const bool isWebItem = true;
-
-          return AlertDialog(
-            title: const Text('Tambah Item Menu (Web)'), // Tetapkan ke (Web)
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 12.0),
-                    child: Text('Item ini akan dikirim ke Web Service dan muncul di tab Dessert/Drink.', style: TextStyle(fontSize: 12, color: Colors.blueGrey)),
-                  ),
-
-                  TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Nama Menu')),
-                  TextField(controller: priceCtrl, decoration: const InputDecoration(labelText: 'Harga (Rp)'), keyboardType: TextInputType.number),
-                  TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Deskripsi')),
-
-                  // INPUT BARU: URL Gambar
-                  TextField(controller: imageCtrl, decoration: const InputDecoration(labelText: 'URL Gambar (Opsional)')),
-
-                  const SizedBox(height: 12),
-
-                  // DROPDOWN: HANYA DESSERT DAN DRINK
-                  DropdownButtonFormField<String>(
-                    value: category,
-                    decoration: const InputDecoration(labelText: 'Kategori'),
-                    items: webCategories
-                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                        .toList(),
-                    onChanged: (newValue) {
-                      setState(() => category = newValue!);
-                    },
-                  ),
-                ],
-              ),
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              child: imagePath.isNotEmpty && isNetworkImage
+                  ? CachedNetworkImage(
+                imageUrl: imagePath,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+                errorWidget: (context, url, error) => _noImagePlaceholder(),
+              )
+                  : (imagePath.isNotEmpty && !isNetworkImage
+                  ? Image.asset(
+                imagePath,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _noImagePlaceholder(),
+              )
+                  : _noImagePlaceholder()),
             ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(c), child: const Text('Batal')),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: COLOR_SECONDARY_ACCENT),
-                onPressed: () async {
-                  final name = nameCtrl.text.trim();
-                  final price = double.tryParse(priceCtrl.text.trim()) ?? 0.0;
-                  final desc = descCtrl.text.trim();
-                  final imageUrl = imageCtrl.text.trim(); // Ambil URL Gambar
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 4),
 
-                  if (name.isEmpty || price <= 0) {
-                    if(context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nama dan Harga harus diisi dengan benar.')));
-                    }
-                    return;
-                  }
+                Text(secondaryText.isEmpty ? item.description : secondaryText, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 8),
 
-                  // Panggil fungsi POST Web Service dengan URL Gambar
-                  final success = await menuVM.addApiDrinkDessert(name, price, desc, category, imageUrl);
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Rp ${item.price.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: COLOR_DARK_PRIMARY)),
 
-                  if (c.mounted) Navigator.pop(c);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(success ? 'Menu berhasil ditambahkan.' : 'Gagal menambahkan menu.')));
-                  }
-                },
-                child: const Text('Tambah'),
-              ),
-            ],
-          );
-        });
-      },
-    );
-  }
-
-  // [MODIFIKASI: FUNGSI EDIT MENU]
-  void _showEditDialog(BuildContext context, MenuViewModel menuVM, MenuItem item, bool isWebItem) {
-    final nameCtrl = TextEditingController(text: item.name);
-    final priceCtrl = TextEditingController(text: item.price.toStringAsFixed(0));
-    final descCtrl = TextEditingController(text: item.description);
-    final imageCtrl = TextEditingController(text: item.image); // BARU: Tampilkan URL Gambar saat Edit
-
-    String category = item.category;
-
-    final List<String> webCategories = ['Dessert', 'Drink'];
-    final List<String> localCategories = ['Main Course', 'Snack', 'Other'];
-
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return StatefulBuilder(builder: (c, setState) {
-
-          // Kategori yang diizinkan untuk di-edit
-          final categories = isWebItem ? webCategories : localCategories;
-
-          return AlertDialog(
-            title: Text('Edit Item Menu (${isWebItem ? 'Web' : 'Lokal'})'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (isWebItem)
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 12.0),
-                      child: Text('Perubahan akan dikirim ke Web Service.', style: TextStyle(fontSize: 12, color: Colors.blueGrey)),
-                    ),
-
-                  TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Nama Menu')),
-                  TextField(controller: priceCtrl, decoration: const InputDecoration(labelText: 'Harga (Rp)'), keyboardType: TextInputType.number),
-                  TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Deskripsi')),
-
-                  // INPUT BARU: URL Gambar saat Edit
-                  if (isWebItem) // Hanya tampilkan jika item adalah item Web
-                    TextField(controller: imageCtrl, decoration: const InputDecoration(labelText: 'URL Gambar')),
-
-                  const SizedBox(height: 12),
-                  // Dropdown kategori
-                  DropdownButtonFormField<String>(
-                    value: category,
-                    decoration: const InputDecoration(labelText: 'Kategori'),
-                    items: categories
-                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                        .toList(),
-                    onChanged: (newValue) => setState(() => category = newValue!),
-                  ),
-                ],
-              ),
+                    if (widget.onAdd != null)
+                      _buildOrderButton(item)
+                    else
+                      const Text('Admin View', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  ],
+                ),
+              ],
             ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(c), child: const Text('Batal')),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: isWebItem ? COLOR_SECONDARY_ACCENT : COLOR_DARK_PRIMARY),
-                onPressed: () async {
-                  final name = nameCtrl.text.trim();
-                  final price = double.tryParse(priceCtrl.text.trim()) ?? 0.0;
-                  final desc = descCtrl.text.trim();
-                  final imageUrl = isWebItem ? imageCtrl.text.trim() : item.image; // Ambil URL Gambar baru jika di mode Web
-
-                  if (name.isEmpty || price <= 0) {
-                    if(context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nama dan Harga harus diisi dengan benar.')));
-                    }
-                    return;
-                  }
-
-                  // Buat objek MenuItem yang diperbarui
-                  final updatedItem = item.copyWith(
-                    name: name,
-                    price: price,
-                    description: desc,
-                    category: category,
-                    image: imageUrl, // Simpan URL gambar
-                  );
-
-                  bool success = false;
-                  if (isWebItem) {
-                    success = await menuVM.updateApiDrinkDessert(updatedItem);
-                  } else {
-                    await menuVM.updateMenuItemLocal(updatedItem);
-                    success = true;
-                  }
-
-                  if (c.mounted) Navigator.pop(c);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(success ? 'Menu berhasil diperbarui.' : 'Gagal memperbarui menu.')));
-                  }
-                },
-                child: const Text('Simpan'),
-              ),
-            ],
-          );
-        });
-      },
-    );
-  }
-
-  // [Fungsi Hapus Menu (logika sama)]
-  void _confirmDelete(BuildContext context, MenuViewModel menuVM, MenuItem item, bool isWebItem) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Konfirmasi Hapus'),
-        content: Text('Anda yakin ingin menghapus menu "${item.name}" dari ${isWebItem ? 'Web' : 'Lokal'}?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
-          ElevatedButton(
-            onPressed: () async {
-              bool success = false;
-              if (isWebItem) {
-                success = await menuVM.removeApiDrinkDessert(item.id);
-              } else {
-                await menuVM.removeMenuItem(item.id);
-                success = true;
-              }
-
-              if(ctx.mounted) Navigator.pop(ctx);
-              if(context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text(success ? 'Menu berhasil dihapus.' : 'Gagal menghapus menu. ID mungkin tidak valid atau koneksi bermasalah.')
-                ));
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Hapus'),
           ),
         ],
       ),
+    );
+  }
+
+
+  // [Builder untuk Main Course]
+  Widget _buildMealGrid(List<Meal> meals) {
+    if (meals.isEmpty) {
+      return const Center(child: Text('Tidak ada resep utama dari Web Service. Coba ganti query pencarian.'));
+    }
+
+    final menuVM = Provider.of<MenuViewModel>(context, listen: false);
+
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: GridView.builder(
+        itemCount: meals.length,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 0.85,
+        ),
+        itemBuilder: (context, i) {
+          final m = meals[i];
+          final mealId = m.idMeal;
+
+          // Menggunakan FutureBuilder untuk mendapatkan harga yang di-override Admin
+          return FutureBuilder<double>(
+            future: menuVM.getPriceForApiMeal(mealId),
+            builder: (context, snapshot) {
+              final currentPrice = snapshot.data ?? 35000.0;
+
+              final MenuItem webMenuItem = MenuItem(
+                id: mealId,
+                name: m.strMeal,
+                price: currentPrice,
+                description: m.strInstructions.split('.').first,
+                image: m.strMealThumb,
+                category: 'Main Course',
+              );
+
+              return _buildMenuItemCard(webMenuItem, isWebItem: true, secondaryText: 'Category: ${m.strCategory} (${m.strArea})');
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  // [KOREKSI: Builder untuk Drinks/Desserts Web Service]
+  Widget _buildDrinksDessertsGrid(List<DessertDrinkApiItem> items) {
+    if (items.isEmpty) {
+      return const Center(child: Text('Tidak ada menu dari Web Service Drinks/Desserts.'));
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: GridView.builder(
+        itemCount: items.length,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 0.85,
+        ),
+        itemBuilder: (context, i) {
+          final m = items[i];
+
+          // Langsung gunakan harga dari objek yang sudah difetch dari Web Service (m.price),
+          // karena harga ini adalah harga yang sudah di-update Admin melalui PUT.
+          final currentPrice = m.price;
+
+          final finalMenuItem = MenuItem(
+            id: m.id,
+            name: m.name,
+            price: currentPrice, // <-- AMBIL HARGA LANGSUNG DARI M.PRICE
+            description: m.description,
+            image: m.image,
+            category: m.category,
+          );
+
+          // isWebItem: true
+          return _buildMenuItemCard(finalMenuItem, isWebItem: true, secondaryText: m.description);
+        },
+      ),
+    );
+  }
+
+
+  // [Builder untuk Menu Lokal yang Tersisa]
+  Widget _buildMenuGridLocal(List<MenuItem> filteredMenu) {
+    if (filteredMenu.isEmpty) {
+      return const Center(child: Text('Menu kosong untuk kategori ini.'));
+    }
+
+    return LayoutBuilder(builder: (ctx, constr) {
+      const int crossAxis = 2;
+      return Padding(
+        padding: const EdgeInsets.all(12),
+        child: GridView.builder(
+          itemCount: filteredMenu.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxis,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 0.8,
+          ),
+          itemBuilder: (context, i) {
+            final m = filteredMenu[i];
+            return _buildMenuItemCard(m, secondaryText: m.description);
+          },
+        ),
+      );
+    });
+  }
+
+
+  @override
+  Widget build(BuildContext context) {
+    final menuVM = Provider.of<MenuViewModel>(context);
+
+    if (menuVM.isLoading) {
+      return const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(COLOR_SECONDARY_ACCENT)));
+    }
+
+    if (widget.menu.isEmpty && menuVM.apiMeals.isEmpty && menuVM.drinksDesserts.isEmpty) {
+      return const Center(child: Text('Menu Kosong. Silakan hubungi Admin untuk menambah menu atau periksa koneksi internet Anda.'));
+    }
+
+    final currentCategories = categories;
+
+    if (_tabController.length != currentCategories.length) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _tabController.dispose();
+          _initializeTabController();
+          setState(() {});
+        }
+      });
+      return const Center(child: CircularProgressIndicator());
+    }
+
+
+    return Column(
+      children: [
+
+        Container(
+          color: COLOR_DARK_PRIMARY,
+          child: TabBar(
+            controller: _tabController,
+            isScrollable: currentCategories.length > 3,
+            labelColor: Colors.white,
+            unselectedLabelColor: COLOR_SECONDARY_ACCENT,
+            indicatorColor: Colors.white,
+            tabs: currentCategories.map((c) => Tab(text: c)).toList(),
+          ),
+        ),
+
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: currentCategories.map((category) {
+              if (category == 'Main Course') {
+                return _buildMealGrid(menuVM.apiMeals);
+              } else if (category == 'Dessert' || category == 'Drink') {
+                return Consumer<MenuViewModel>(
+                  builder: (context, vm, child) {
+                    final items = vm.drinksDesserts;
+                    final filteredItems = items.where((item) => item.category == category).toList();
+
+                    return _buildDrinksDessertsGrid(filteredItems);
+                  },
+                );
+              }
+              // Tampilkan menu lokal untuk kategori lain
+              final filteredMenu = _getMenuByCategory(category);
+              return _buildMenuGridLocal(filteredMenu);
+            }).toList(),
+          ),
+        ),
+      ],
     );
   }
 }
