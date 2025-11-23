@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+// TAMBAHAN: Import untuk mendukung sqflite di desktop/Windows
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'dart:io' show Platform;
+
 // Import ViewModel
 import 'view_models/auth_view_model.dart';
 import 'view_models/cart_view_model.dart';
@@ -13,6 +17,14 @@ import 'view_models/admin_order_view_model.dart';
 import 'views/first.dart'; // Menggunakan first.dart
 
 void main() {
+  // --- PERBAIKAN UNTUK MENGATASI "Bad state: databaseFactory not initialized" ---
+  // Inisialisasi FFI database factory untuk desktop (Windows, Linux, macOS)
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    sqfliteFfiInit(); // Inisialisasi FFI
+    databaseFactory = databaseFactoryFfi; // Atur factory global
+  }
+  // --- AKHIR PERBAIKAN ---
+
   runApp(
     MultiProvider(
       providers: [
